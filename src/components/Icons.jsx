@@ -207,3 +207,39 @@ export function IconSettings() {
     </svg>
   );
 }
+
+export function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 19c.8-3.4 3.4-5.2 7-5.2s6.2 1.8 7 5.2" />
+    </svg>
+  );
+}
+
+export function IconLock() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="5" y="10" width="14" height="10" rx="2" />
+      <path d="M8 10V8a4 4 0 0 1 8 0v2" />
+    </svg>
+  );
+}
+
+export function IconEye() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 12s3.5-6.5 9-6.5S21 12 21 12s-3.5 6.5-9 6.5S3 12 3 12Z" />
+      <circle cx="12" cy="12" r="2.4" />
+    </svg>
+  );
+}
+
+export function IconEyeOff() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5l16 14M9.5 9.6A3.2 3.2 0 0 0 12 15.2M14.6 14.2A3.2 3.2 0 0 0 9.9 9.4" />
+      <path d="M6.2 7.6C4.3 9 3 12 3 12s3.5 6.5 9 6.5c1.6 0 3-.3 4.3-.9M17.8 16.2C19.6 14.8 21 12 21 12s-3.5-6.5-9-6.5c-.8 0-1.6.1-2.3.3" />
+    </svg>
+  );
+}

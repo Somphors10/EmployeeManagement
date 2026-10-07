@@ -5,11 +5,13 @@ import Avatar from '../components/Avatar';
 import EmployeeForm from '../components/EmployeeForm';
 import { IconPlus, IconSearch } from '../components/Icons';
 import Modal from '../components/Modal';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, prettyEnum } from '../utils/format';
 
 export default function Employees() {
   const { showToast } = useToast();
+  const { can } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
@@ -93,10 +95,12 @@ export default function Employees() {
             {loading ? 'Loading…' : `${employees.length} people`} · click a row to open the profile
           </p>
         </div>
-        <button type="button" className="button-primary" onClick={() => setCreating(true)}>
-          <IconPlus />
-          Add employee
-        </button>
+        {can('employees:write') && (
+          <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+            <IconPlus />
+            Add employee
+          </button>
+        )}
       </header>
 
       <div className="filter-bar">

@@ -6,7 +6,10 @@ import Avatar from '../components/Avatar';
 import EmployeeForm from '../components/EmployeeForm';
 import LeaveForm from '../components/LeaveForm';
 import ManagerForm from '../components/ManagerForm';
+import { useConfirm } from '../components/ConfirmDialog';
+import { IconCalendar, IconMail, IconPeople, IconPhone } from '../components/Icons';
 import Modal from '../components/Modal';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import TransferForm from '../components/TransferForm';
 import { formatDate, formatDateTime, fullName, prettyEnum } from '../utils/format';
@@ -22,6 +25,8 @@ export default function EmployeeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [tab, setTab] = useState('overview');
   const [employee, setEmployee] = useState(null);
   const [people, setPeople] = useState([]);
@@ -107,52 +112,70 @@ export default function EmployeeDetail() {
 
   const inactive = employee.status === 'INACTIVE';
   const manager = peopleById[employee.managerId];
+  const pendingLeaveCount = leaves.filter((leave) => leave.status === 'PENDING').length;
 
   return (
-    <section className="page">
+    <section className="page profile-page">
       <Link to="/employees" className="back-link">
         ← Employees
       </Link>
 
-      <header className="profile-head">
-        <Avatar firstName={employee.firstName} lastName={employee.lastName} size="lg" />
-        <div className="profile-head-copy">
-          <h2>{fullName(employee)}</h2>
-          <p>
-            {employee.position} · {employee.department}
-          </p>
-          <span className={`status-badge ${inactive ? 'inactive' : 'active'}`}>
-            {prettyEnum(employee.status)}
-          </span>
+      <header className="profile-hero">
+        <div className="profile-hero-main">
+          <Avatar firstName={employee.firstName} lastName={employee.lastName} size="lg" />
+          <div className="profile-head-copy">
+            <h2>{fullName(employee)}</h2>
+            <p>
+              {employee.position} · {employee.department}
+            </p>
+            <div className="profile-chips">
+              <span className={`status-badge ${inactive ? 'inactive' : 'active'}`}>
+                {prettyEnum(employee.status)}
+              </span>
+              <span className="profile-chip">{employee.department}</span>
+              <span className="profile-chip">Hired {formatDate(employee.hireDate)}</span>
+            </div>
+          </div>
         </div>
-        <div className="header-actions">
-          <button type="button" className="button-ghost" onClick={() => setModal('edit')}>
-            Edit
-          </button>
-          <button type="button" className="button-ghost" onClick={() => setModal('transfer')}>
-            Transfer
-          </button>
-          <button
-            type="button"
-            className="button-ghost"
-            disabled={busy}
-            onClick={() =>
-              run(
-                async () => {
-                  const next = inactive ? 'ACTIVE' : 'INACTIVE';
-                  const response = await employeeApi.updateStatus(id, next);
-                  setEmployee(response.payload);
-                },
-                inactive ? 'Employee activated' : 'Employee deactivated',
-              )
-            }
-          >
-            {inactive ? 'Activate' : 'Deactivate'}
-          </button>
-          <button type="button" className="button-danger" onClick={() => setModal('delete')}>
-            Delete
-          </button>
-        </div>
+        {can('employees:write') && (
+          <div className="header-actions">
+            <button type="button" className="button-ghost" onClick={() => setModal('edit')}>
+              Edit
+            </button>
+            <button type="button" className="button-ghost" onClick={() => setModal('transfer')}>
+              Transfer
+            </button>
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={busy}
+              onClick={() =>
+                ask({
+                  title: inactive ? 'Activate employee' : 'Deactivate employee',
+                  message: inactive
+                    ? `Activate ${fullName(employee)}?`
+                    : `Deactivate ${fullName(employee)}? They will be marked inactive.`,
+                  confirmLabel: inactive ? 'Activate' : 'Deactivate',
+                  danger: !inactive,
+                  onConfirm: () =>
+                    run(
+                      async () => {
+                        const next = inactive ? 'ACTIVE' : 'INACTIVE';
+                        const response = await employeeApi.updateStatus(id, next);
+                        setEmployee(response.payload);
+                      },
+                      inactive ? 'Employee activated' : 'Employee deactivated',
+                    ),
+                })
+              }
+            >
+              {inactive ? 'Activate' : 'Deactivate'}
+            </button>
+            <button type="button" className="button-danger" onClick={() => setModal('delete')}>
+              Delete
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="tabs">
@@ -169,34 +192,72 @@ export default function EmployeeDetail() {
       </div>
 
       {tab === 'overview' && (
-        <article className="panel">
-          <dl className="info-list">
-            <div>
-              <dt>Email</dt>
-              <dd>{employee.email}</dd>
-            </div>
-            <div>
-              <dt>Phone</dt>
-              <dd>{employee.phoneNumber}</dd>
-            </div>
-            <div>
-              <dt>Hire date</dt>
-              <dd>{formatDate(employee.hireDate, { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
-            </div>
-            <div>
-              <dt>Manager</dt>
-              <dd>
-                {manager ? (
-                  <Link to={`/employees/${manager.id}`} className="plain-link">
-                    {fullName(manager)}
-                  </Link>
-                ) : (
-                  'Not assigned'
-                )}
-              </dd>
-            </div>
-          </dl>
-        </article>
+        <div className="profile-overview">
+          <div className="profile-facts">
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconMail />
+              </span>
+              <div>
+                <p>Email</p>
+                <strong>{employee.email}</strong>
+              </div>
+            </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconPhone />
+              </span>
+              <div>
+                <p>Phone</p>
+                <strong>{employee.phoneNumber || '—'}</strong>
+              </div>
+            </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconCalendar />
+              </span>
+              <div>
+                <p>Hire date</p>
+                <strong>{formatDate(employee.hireDate, { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+              </div>
+            </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconPeople />
+              </span>
+              <div>
+                <p>Manager</p>
+                <strong>
+                  {manager ? (
+                    <Link to={`/employees/${manager.id}`} className="plain-link">
+                      {fullName(manager)}
+                    </Link>
+                  ) : (
+                    'Not assigned'
+                  )}
+                </strong>
+              </div>
+            </article>
+          </div>
+
+          <aside className="profile-side">
+            <article className="stat-card">
+              <p>Direct reports</p>
+              <strong>{subordinates.length}</strong>
+              <em>People on this team</em>
+            </article>
+            <article className="stat-card">
+              <p>Pending leave</p>
+              <strong>{pendingLeaveCount}</strong>
+              <em>Requests waiting review</em>
+            </article>
+            <article className="stat-card">
+              <p>History</p>
+              <strong>{history.length}</strong>
+              <em>Recorded activity events</em>
+            </article>
+          </aside>
+        </div>
       )}
 
       {tab === 'team' && (
@@ -206,19 +267,28 @@ export default function EmployeeDetail() {
               <div className="panel-header">
                 <h3>Manager</h3>
                 <div className="header-actions">
-                  <button type="button" className="plain-link" onClick={() => setModal('manager')}>
-                    Change
-                  </button>
-                  {employee.managerId && (
+                  {can('employees:write') && (
+                    <button type="button" className="plain-link" onClick={() => setModal('manager')}>
+                      Change
+                    </button>
+                  )}
+                  {can('employees:write') && employee.managerId && (
                     <button
                       type="button"
                       className="link-bad"
                       disabled={busy}
                       onClick={() =>
-                        run(async () => {
-                          const response = await employeeApi.clearManager(id);
-                          setEmployee(response.payload);
-                        }, 'Manager cleared')
+                        ask({
+                          title: 'Remove manager',
+                          message: `Clear the manager for ${fullName(employee)}?`,
+                          confirmLabel: 'Remove',
+                          danger: true,
+                          onConfirm: () =>
+                            run(async () => {
+                              const response = await employeeApi.clearManager(id);
+                              setEmployee(response.payload);
+                            }, 'Manager cleared'),
+                        })
                       }
                     >
                       Remove
@@ -268,9 +338,11 @@ export default function EmployeeDetail() {
         <article className="panel">
           <div className="panel-header">
             <h3>Leave requests</h3>
-            <button type="button" className="button-ghost" onClick={() => setModal('leave')}>
-              Request leave
-            </button>
+            {can('leaves:create') && (
+              <button type="button" className="button-ghost" onClick={() => setModal('leave')}>
+                Request leave
+              </button>
+            )}
           </div>
           {leaves.length === 0 ? (
             <p className="muted">No leave requests yet.</p>
@@ -396,6 +468,8 @@ export default function EmployeeDetail() {
           />
         </Modal>
       )}
+
+      {dialog}
 
       {modal === 'delete' && (
         <Modal title="Delete employee" onClose={() => setModal('')}>

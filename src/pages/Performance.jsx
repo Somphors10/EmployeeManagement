@@ -5,11 +5,13 @@ import { performanceApi } from '../api/performance';
 import Modal from '../components/Modal';
 import ReviewForm from '../components/ReviewForm';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, peopleMap } from '../utils/format';
 
 export default function Performance() {
   const { showToast } = useToast();
+  const { can } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
@@ -67,9 +69,11 @@ export default function Performance() {
           <h2>Performance</h2>
           <p className="page-copy">Record reviews and keep a running view of ratings.</p>
         </div>
-        <button className="button-primary" onClick={() => setCreating(true)}>
-          <IconPlus /> New review
-        </button>
+        {can('performance:write') && (
+          <button className="button-primary" onClick={() => setCreating(true)}>
+            <IconPlus /> New review
+          </button>
+        )}
       </header>
 
       <div className="stat-grid">

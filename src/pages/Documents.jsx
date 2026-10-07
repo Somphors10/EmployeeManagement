@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { documentApi } from '../api/documents';
 import { employeeApi } from '../api/employees';
+import { useConfirm } from '../components/ConfirmDialog';
 import DocumentForm from '../components/DocumentForm';
 import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDateTime, fullName, peopleMap, prettyEnum } from '../utils/format';
 
 export default function Documents() {
   const { showToast } = useToast();
+  const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [documents, setDocuments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
@@ -57,7 +61,6 @@ export default function Documents() {
   }
 
   async function remove(id) {
-    if (!window.confirm('Delete this document?')) return;
     setBusy(true);
     try {
       await documentApi.remove(id);
@@ -77,9 +80,11 @@ export default function Documents() {
           <h2>Documents</h2>
           <p className="page-copy">Store employee file metadata and open the linked files.</p>
         </div>
-        <button className="button-primary" onClick={() => setCreating(true)}>
-          <IconPlus /> Add document
-        </button>
+        {can('documents:write') && (
+          <button className="button-primary" onClick={() => setCreating(true)}>
+            <IconPlus /> Add document
+          </button>
+        )}
       </header>
 
       <div className="filter-bar">
@@ -139,9 +144,24 @@ export default function Documents() {
                           Open
                         </a>
                       )}
-                      <button type="button" className="link-bad" onClick={() => remove(doc.id)} disabled={busy}>
-                        Delete
-                      </button>
+                      {can('documents:write') && (
+                        <button
+                          type="button"
+                          className="link-bad"
+                          disabled={busy}
+                          onClick={() =>
+                            ask({
+                              title: 'Delete document',
+                              message: `Delete “${doc.title}”? This cannot be undone.`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                              onConfirm: () => remove(doc.id),
+                            })
+                          }
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -156,6 +176,7 @@ export default function Documents() {
           <DocumentForm employees={employees} onSubmit={handleCreate} onCancel={() => setCreating(false)} busy={busy} />
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }

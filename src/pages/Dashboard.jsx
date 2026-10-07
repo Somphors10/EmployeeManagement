@@ -4,11 +4,28 @@ import { announcementApi } from '../api/announcements';
 import { dashboardApi } from '../api/dashboard';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
+import { useAuth } from '../auth/AuthContext';
 import Avatar from '../components/Avatar';
-import { IconClock, IconFile, IconPay, IconStar } from '../components/Icons';
-import { formatDateTime, fullName, prettyEnum } from '../utils/format';
+import {
+  IconClock,
+  IconFile,
+  IconLeave,
+  IconMegaphone,
+  IconPay,
+  IconPeople,
+  IconStar,
+} from '../components/Icons';
+import { formatDate, formatDateTime, fullName, prettyEnum, todayLabel } from '../utils/format';
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function Dashboard() {
+  const { can, user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [totals, setTotals] = useState(null);
   const [pendingLeaves, setPendingLeaves] = useState([]);
@@ -47,13 +64,56 @@ export default function Dashboard() {
   }, []);
 
   const peopleById = Object.fromEntries(employees.map((person) => [person.id, person]));
+  const stats = [
+    {
+      label: 'Employees',
+      value: totals?.totalEmployees ?? 0,
+      hint: 'In the directory',
+      icon: IconPeople,
+      to: '/employees',
+    },
+    {
+      label: 'Active',
+      value: totals?.activeEmployees ?? 0,
+      hint: 'Currently employed',
+      icon: IconPeople,
+      to: '/employees',
+    },
+    {
+      label: 'Pending leave',
+      value: totals?.pendingLeaves ?? 0,
+      hint: 'Waiting for a decision',
+      icon: IconLeave,
+      to: '/leaves',
+    },
+    {
+      label: 'Today attendance',
+      value: totals?.todayAttendance ?? 0,
+      hint: 'Checked in today',
+      icon: IconClock,
+      to: '/attendance',
+    },
+  ];
+
+  if (can('payroll:view')) {
+    stats.push({
+      label: 'Pending payroll',
+      value: totals?.pendingPayrolls ?? 0,
+      hint: 'Still to mark paid',
+      icon: IconPay,
+      to: '/payroll',
+    });
+  }
 
   return (
-    <section className="page">
-      <header className="page-header">
+    <section className="page dashboard-page">
+      <header className="dash-hero">
         <div>
-          <h2>Dashboard</h2>
-          <p className="page-copy">Live totals from the workspace: people, leave, attendance, and payroll.</p>
+          <p className="dash-kicker">{todayLabel()}</p>
+          <h2>
+            {greeting()}, {user?.username}
+          </h2>
+          <p>Live totals for people, leave, attendance, and payroll.</p>
         </div>
         <Link to="/employees" className="button-primary">
           View employees
@@ -63,26 +123,21 @@ export default function Dashboard() {
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="stat-grid">
-        <article className="stat-card">
-          <p>Employees</p>
-          <strong>{loading ? '—' : totals?.totalEmployees ?? 0}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Active</p>
-          <strong>{loading ? '—' : totals?.activeEmployees ?? 0}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Pending leave</p>
-          <strong>{loading ? '—' : totals?.pendingLeaves ?? 0}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Today attendance</p>
-          <strong>{loading ? '—' : totals?.todayAttendance ?? 0}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Pending payroll</p>
-          <strong>{loading ? '—' : totals?.pendingPayrolls ?? 0}</strong>
-        </article>
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Link key={stat.label} to={stat.to} className="stat-card dash-stat">
+              <div className="stat-card-top">
+                <p>{stat.label}</p>
+                <span className="stat-icon">
+                  <Icon />
+                </span>
+              </div>
+              <strong>{loading ? '—' : stat.value}</strong>
+              <em>{stat.hint}</em>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="dashboard-split">
@@ -96,7 +151,7 @@ export default function Dashboard() {
           ) : employees.length === 0 ? (
             <p className="muted">No employees yet.</p>
           ) : (
-            <ul className="simple-list">
+            <ul className="simple-list dash-list">
               {employees.slice(0, 6).map((employee) => (
                 <li key={employee.id}>
                   <Link to={`/employees/${employee.id}`} className="simple-row">
@@ -125,16 +180,22 @@ export default function Dashboard() {
           ) : pendingLeaves.length === 0 ? (
             <p className="muted">No pending leave requests.</p>
           ) : (
-            <ul className="simple-list">
+            <ul className="simple-list dash-list">
               {pendingLeaves.slice(0, 6).map((leave) => (
-                <li key={leave.id} className="simple-row">
-                  <span>
-                    <strong>{fullName(peopleById[leave.employeeId])}</strong>
-                    <em>
-                      {prettyEnum(leave.type)} · {leave.startDate} – {leave.endDate}
-                    </em>
-                  </span>
-                  <span className="status-badge pending">Pending</span>
+                <li key={leave.id}>
+                  <Link to="/leaves" className="simple-row">
+                    <Avatar
+                      firstName={peopleById[leave.employeeId]?.firstName}
+                      lastName={peopleById[leave.employeeId]?.lastName}
+                    />
+                    <span>
+                      <strong>{fullName(peopleById[leave.employeeId])}</strong>
+                      <em>
+                        {prettyEnum(leave.type)} · {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
+                      </em>
+                    </span>
+                    <span className="status-badge pending">Pending</span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -143,21 +204,43 @@ export default function Dashboard() {
       </div>
 
       <div className="shortcut-grid">
-        <Link to="/attendance" className="panel shortcut">
-          <IconClock />
-          <span>Attendance</span>
+        <Link to="/attendance" className="shortcut">
+          <span className="stat-icon">
+            <IconClock />
+          </span>
+          <span>
+            <strong>Attendance</strong>
+            <em>Check in and review the day</em>
+          </span>
         </Link>
-        <Link to="/payroll" className="panel shortcut">
-          <IconPay />
-          <span>Payroll</span>
+        {can('payroll:view') && (
+          <Link to="/payroll" className="shortcut">
+            <span className="stat-icon">
+              <IconPay />
+            </span>
+            <span>
+              <strong>Payroll</strong>
+              <em>Create records and mark paid</em>
+            </span>
+          </Link>
+        )}
+        <Link to="/documents" className="shortcut">
+          <span className="stat-icon">
+            <IconFile />
+          </span>
+          <span>
+            <strong>Documents</strong>
+            <em>Store contracts and files</em>
+          </span>
         </Link>
-        <Link to="/documents" className="panel shortcut">
-          <IconFile />
-          <span>Documents</span>
-        </Link>
-        <Link to="/performance" className="panel shortcut">
-          <IconStar />
-          <span>Performance</span>
+        <Link to="/performance" className="shortcut">
+          <span className="stat-icon">
+            <IconStar />
+          </span>
+          <span>
+            <strong>Performance</strong>
+            <em>Ratings and review notes</em>
+          </span>
         </Link>
       </div>
 
@@ -171,11 +254,16 @@ export default function Dashboard() {
         ) : announcements.length === 0 ? (
           <p className="muted">No published announcements yet.</p>
         ) : (
-          <ul className="simple-list">
+          <ul className="simple-list dash-news">
             {announcements.slice(0, 4).map((item) => (
               <li key={item.id}>
-                <strong>{item.title}</strong>
-                <em className="table-sub">{formatDateTime(item.createdAt)}</em>
+                <span className="stat-icon">
+                  <IconMegaphone />
+                </span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <em className="table-sub">{formatDateTime(item.createdAt)}</em>
+                </span>
               </li>
             ))}
           </ul>

@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { payrollApi } from '../api/payroll';
+import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import PayrollForm from '../components/PayrollForm';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, formatMoney, fullName, peopleMap, prettyEnum } from '../utils/format';
 
 export default function Payroll() {
   const { showToast } = useToast();
+  const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
@@ -83,9 +87,11 @@ export default function Payroll() {
           <h2>Payroll</h2>
           <p className="page-copy">Create pay records and mark them paid when processed.</p>
         </div>
-        <button className="button-primary" onClick={() => setCreating(true)}>
-          <IconPlus /> New payroll
-        </button>
+        {can('payroll:write') && (
+          <button className="button-primary" onClick={() => setCreating(true)}>
+            <IconPlus /> New payroll
+          </button>
+        )}
       </header>
 
       <div className="stat-grid">
@@ -168,8 +174,20 @@ export default function Payroll() {
                       </span>
                     </td>
                     <td className="table-actions" data-label="Action">
-                      {row.status === 'PENDING' && (
-                        <button type="button" className="link-ok" onClick={() => markPaid(row.id)} disabled={busy}>
+                      {row.status === 'PENDING' && can('payroll:write') && (
+                        <button
+                          type="button"
+                          className="link-ok"
+                          disabled={busy}
+                          onClick={() =>
+                            ask({
+                              title: 'Mark payroll as paid',
+                              message: `Mark this payroll${person ? ` for ${fullName(person)}` : ''} as paid?`,
+                              confirmLabel: 'Mark paid',
+                              onConfirm: () => markPaid(row.id),
+                            })
+                          }
+                        >
                           Mark paid
                         </button>
                       )}
@@ -187,6 +205,7 @@ export default function Payroll() {
           <PayrollForm employees={employees} onSubmit={handleCreate} onCancel={() => setCreating(false)} busy={busy} />
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }

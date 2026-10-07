@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { announcementApi } from '../api/announcements';
 import AnnouncementForm from '../components/AnnouncementForm';
+import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDateTime } from '../utils/format';
 
 export default function Announcements() {
   const { showToast } = useToast();
+  const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,7 +51,6 @@ export default function Announcements() {
   }
 
   async function remove(id) {
-    if (!window.confirm('Delete this announcement?')) return;
     setBusy(true);
     try {
       await announcementApi.remove(id);
@@ -67,9 +70,11 @@ export default function Announcements() {
           <h2>Announcements</h2>
           <p className="page-copy">Publish company updates the team can see on the dashboard.</p>
         </div>
-        <button className="button-primary" onClick={() => setEditing({})}>
-          <IconPlus /> New announcement
-        </button>
+        {can('announcements:write') && (
+          <button className="button-primary" onClick={() => setEditing({})}>
+            <IconPlus /> New announcement
+          </button>
+        )}
       </header>
 
       {error && <div className="banner banner-error">{error}</div>}
@@ -94,14 +99,29 @@ export default function Announcements() {
               </span>
             </div>
             <p>{item.content}</p>
-            <div className="table-actions">
-              <button type="button" className="plain-link" onClick={() => setEditing(item)}>
-                Edit
-              </button>
-              <button type="button" className="link-bad" onClick={() => remove(item.id)} disabled={busy}>
-                Delete
-              </button>
-            </div>
+            {can('announcements:write') && (
+              <div className="table-actions">
+                <button type="button" className="plain-link" onClick={() => setEditing(item)}>
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="link-bad"
+                  disabled={busy}
+                  onClick={() =>
+                    ask({
+                      title: 'Delete announcement',
+                      message: `Delete “${item.title}”? This cannot be undone.`,
+                      confirmLabel: 'Delete',
+                      danger: true,
+                      onConfirm: () => remove(item.id),
+                    })
+                  }
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -116,6 +136,7 @@ export default function Announcements() {
           />
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }

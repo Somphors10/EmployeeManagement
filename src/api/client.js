@@ -1,10 +1,16 @@
+import { getToken, notifyUnauthorized } from './session';
+
 async function request(url, options = {}) {
+  const { skipAuth, headers: extraHeaders, ...rest } = options;
+  const token = skipAuth ? null : getToken();
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(extraHeaders || {}),
     },
-    ...options,
+    ...rest,
   });
 
   let data = null;
@@ -14,8 +20,14 @@ async function request(url, options = {}) {
     data = null;
   }
 
+  if (response.status === 401 && !skipAuth) {
+    notifyUnauthorized();
+  }
+
   if (!response.ok) {
-    const message = data?.message || `Request failed with status ${response.status}`;
+    const fallback =
+      response.status === 403 ? 'Access denied' : `Request failed with status ${response.status}`;
+    const message = data?.message || fallback;
     const error = new Error(message);
     error.status = response.status;
     throw error;

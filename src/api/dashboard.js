@@ -1,4 +1,4 @@
-import { request, withQuery } from './client';
+import { request } from './client';
 
 export const dashboardApi = {
   getTotals() {

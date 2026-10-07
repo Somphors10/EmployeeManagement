@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { organizationApi } from '../api/organization';
+import { useConfirm } from '../components/ConfirmDialog';
 import DepartmentForm from '../components/DepartmentForm';
 import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { fullName, peopleMap } from '../utils/format';
 
 export default function Organization() {
   const { showToast } = useToast();
+  const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +57,6 @@ export default function Organization() {
   }
 
   async function remove(id) {
-    if (!window.confirm('Delete this department?')) return;
     setBusy(true);
     try {
       await organizationApi.remove(id);
@@ -73,9 +76,11 @@ export default function Organization() {
           <h2>Organization</h2>
           <p className="page-copy">Manage departments and assign a manager to each one.</p>
         </div>
-        <button className="button-primary" onClick={() => setEditing({})}>
-          <IconPlus /> New department
-        </button>
+        {can('organization:write') && (
+          <button className="button-primary" onClick={() => setEditing({})}>
+            <IconPlus /> New department
+          </button>
+        )}
       </header>
 
       <div className="stat-grid">
@@ -126,12 +131,29 @@ export default function Organization() {
                     </td>
                     <td data-label="Description">{dept.description || '—'}</td>
                     <td className="table-actions" data-label="Action">
-                      <button type="button" className="plain-link" onClick={() => setEditing(dept)}>
-                        Edit
-                      </button>
-                      <button type="button" className="link-bad" onClick={() => remove(dept.id)} disabled={busy}>
-                        Delete
-                      </button>
+                      {can('organization:write') && (
+                        <>
+                          <button type="button" className="plain-link" onClick={() => setEditing(dept)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="link-bad"
+                            disabled={busy}
+                            onClick={() =>
+                              ask({
+                                title: 'Delete department',
+                                message: `Delete “${dept.name}”? This cannot be undone.`,
+                                confirmLabel: 'Delete',
+                                danger: true,
+                                onConfirm: () => remove(dept.id),
+                              })
+                            }
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -152,6 +174,7 @@ export default function Organization() {
           />
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }

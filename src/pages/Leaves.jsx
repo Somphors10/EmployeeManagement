@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
+import { useConfirm } from '../components/ConfirmDialog';
 import LeaveForm from '../components/LeaveForm';
 import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, prettyEnum } from '../utils/format';
 
 export default function Leaves() {
   const { showToast } = useToast();
+  const { can, user } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [status, setStatus] = useState('PENDING');
@@ -80,10 +84,12 @@ export default function Leaves() {
           <h2>Leaves</h2>
           <p className="page-copy">Review time-off requests. Pending items need a decision.</p>
         </div>
-        <button type="button" className="button-primary" onClick={() => setCreating(true)}>
-          <IconPlus />
-          New request
-        </button>
+        {can('leaves:create') && (
+          <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+            <IconPlus />
+            New request
+          </button>
+        )}
       </header>
 
       <div className="tabs">
@@ -153,12 +159,37 @@ export default function Leaves() {
                       </span>
                     </td>
                     <td className="table-actions" data-label="Action">
-                      {leave.status === 'PENDING' && (
+                      {leave.status === 'PENDING' && can('leaves:decide') && (
                         <>
-                          <button type="button" className="link-ok" onClick={() => decide(leave.id, 'approve')} disabled={busy}>
+                          <button
+                            type="button"
+                            className="link-ok"
+                            disabled={busy}
+                            onClick={() =>
+                              ask({
+                                title: 'Approve leave',
+                                message: `Approve this leave request${person ? ` for ${fullName(person)}` : ''}?`,
+                                confirmLabel: 'Approve',
+                                onConfirm: () => decide(leave.id, 'approve'),
+                              })
+                            }
+                          >
                             Approve
                           </button>
-                          <button type="button" className="link-bad" onClick={() => decide(leave.id, 'reject')} disabled={busy}>
+                          <button
+                            type="button"
+                            className="link-bad"
+                            disabled={busy}
+                            onClick={() =>
+                              ask({
+                                title: 'Reject leave',
+                                message: `Reject this leave request${person ? ` for ${fullName(person)}` : ''}?`,
+                                confirmLabel: 'Reject',
+                                danger: true,
+                                onConfirm: () => decide(leave.id, 'reject'),
+                              })
+                            }
+                          >
                             Reject
                           </button>
                         </>
@@ -176,12 +207,14 @@ export default function Leaves() {
         <Modal title="New leave request" onClose={() => setCreating(false)}>
           <LeaveForm
             employees={employees}
+            defaultEmployeeId={user?.employeeId || ''}
             onSubmit={handleCreate}
             onCancel={() => setCreating(false)}
             busy={busy}
           />
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }

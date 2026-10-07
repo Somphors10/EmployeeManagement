@@ -3,10 +3,14 @@ import { settingApi } from '../api/settings';
 import Modal from '../components/Modal';
 import SettingForm from '../components/SettingForm';
 import { IconPlus } from '../components/Icons';
+import { Permission } from '../auth/permissions';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
+import { applyWorkspaceSettings } from '../utils/workspace';
 
 export default function Settings() {
   const { showToast } = useToast();
+  const { can } = useAuth();
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,7 +22,9 @@ export default function Settings() {
     setError('');
     try {
       const response = await settingApi.getAll();
-      setSettings(response.payload || []);
+      const items = response.payload || [];
+      setSettings(items);
+      applyWorkspaceSettings(items);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -51,9 +57,11 @@ export default function Settings() {
           <h2>Settings</h2>
           <p className="page-copy">Create or update application keys used by the workspace.</p>
         </div>
-        <button className="button-primary" onClick={() => setEditing({})}>
-          <IconPlus /> New setting
-        </button>
+        {can(Permission.SETTINGS_WRITE) && (
+          <button className="button-primary" onClick={() => setEditing({})}>
+            <IconPlus /> New setting
+          </button>
+        )}
       </header>
 
       {error && <div className="banner banner-error">{error}</div>}
@@ -83,9 +91,11 @@ export default function Settings() {
                   </td>
                   <td data-label="Value">{setting.value}</td>
                   <td className="table-actions" data-label="Action">
-                    <button type="button" className="plain-link" onClick={() => setEditing(setting)}>
-                      Edit
-                    </button>
+                    {can(Permission.SETTINGS_WRITE) && (
+                      <button type="button" className="plain-link" onClick={() => setEditing(setting)}>
+                        Edit
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

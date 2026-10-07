@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { dashboardApi } from '../api/dashboard';
+import { NAV, NAV_PERMISSION } from '../auth/permissions';
+import { useAuth } from '../auth/AuthContext';
+import { useConfirm } from './ConfirmDialog';
 import {
   IconClock,
   IconClose,
@@ -15,18 +18,7 @@ import {
   IconStar,
 } from './Icons';
 
-const FALLBACK_NAV = [
-  { key: 'dashboard', label: 'Dashboard', path: '/', status: 'LIVE' },
-  { key: 'employees', label: 'Employees', path: '/employees', status: 'LIVE' },
-  { key: 'leaves', label: 'Leaves', path: '/leaves', status: 'LIVE' },
-  { key: 'attendance', label: 'Attendance', path: '/attendance', status: 'LIVE' },
-  { key: 'payroll', label: 'Payroll', path: '/payroll', status: 'LIVE' },
-  { key: 'documents', label: 'Documents', path: '/documents', status: 'LIVE' },
-  { key: 'performance', label: 'Performance', path: '/performance', status: 'LIVE' },
-  { key: 'organization', label: 'Organization', path: '/organization', status: 'LIVE' },
-  { key: 'announcements', label: 'Announcements', path: '/announcements', status: 'LIVE' },
-  { key: 'settings', label: 'Settings', path: '/settings', status: 'LIVE' },
-];
+const FALLBACK_NAV = NAV.map((item) => ({ ...item, status: 'LIVE' }));
 
 const NAV_ICONS = {
   dashboard: IconGrid,
@@ -48,6 +40,8 @@ function toAppPath(path) {
 
 export default function Layout() {
   const location = useLocation();
+  const { user, logout, can, workspace } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [menuOpen, setMenuOpen] = useState(false);
   const [navItems, setNavItems] = useState(FALLBACK_NAV);
 
@@ -80,12 +74,14 @@ export default function Layout() {
     };
   }, []);
 
+  const visibleNav = navItems.filter((item) => can(NAV_PERMISSION[item.key] || `${item.key}:view`));
+
   return (
     <div className={`app-shell ${menuOpen ? 'is-open' : ''}`}>
       <header className="mobile-bar">
         <div className="brand">
           <span className="brand-mark">EH</span>
-          <h1>Employee Hub</h1>
+          <h1>{workspace?.companyName || 'Employee Hub'}</h1>
         </div>
         <button
           type="button"
@@ -106,13 +102,13 @@ export default function Layout() {
           <span className="brand-mark">EH</span>
           <div className="brand-text">
             <p className="brand-kicker">HR</p>
-            <h1>Employee Hub</h1>
+            <h1>{workspace?.companyName || 'Employee Hub'}</h1>
           </div>
         </div>
 
         <nav className="side-nav">
           <p className="nav-label">Workspace</p>
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = NAV_ICONS[item.key] || IconGrid;
             return (
               <NavLink key={item.key} to={item.path} end={item.path === '/'}>
@@ -122,11 +118,33 @@ export default function Layout() {
             );
           })}
         </nav>
+
+        <div className="sidebar-user">
+          <div className="sidebar-user-copy">
+            <strong>{user?.username}</strong>
+            <em>{user?.role}</em>
+          </div>
+          <button
+            type="button"
+            className="sidebar-logout"
+            onClick={() =>
+              ask({
+                title: 'Log out',
+                message: 'Log out of Employee Hub?',
+                confirmLabel: 'Log out',
+                onConfirm: logout,
+              })
+            }
+          >
+            Log out
+          </button>
+        </div>
       </aside>
 
       <main className="main-area">
         <Outlet />
       </main>
+      {dialog}
     </div>
   );
 }

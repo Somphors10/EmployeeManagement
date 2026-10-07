@@ -2,13 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { attendanceApi } from '../api/attendance';
 import { employeeApi } from '../api/employees';
+import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
+import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, formatTime, fullName, peopleMap, prettyEnum, todayISO } from '../utils/format';
 
 export default function Attendance() {
   const { showToast } = useToast();
+  const { can, user } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
@@ -16,7 +20,7 @@ export default function Attendance() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState(user?.employeeId || '');
   const [busy, setBusy] = useState(false);
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
@@ -74,9 +78,17 @@ export default function Attendance() {
           <h2>Attendance</h2>
           <p className="page-copy">Check people in and out, then review the day&apos;s records.</p>
         </div>
-        <button className="button-primary" onClick={() => setChecking(true)}>
-          <IconPlus /> Check in / out
-        </button>
+        {can('attendance:check') && (
+          <button
+            className="button-primary"
+            onClick={() => {
+              setSelectedEmployee(user?.employeeId || '');
+              setChecking(true);
+            }}
+          >
+            <IconPlus /> Check in / out
+          </button>
+        )}
       </header>
 
       <div className="stat-grid">
@@ -184,16 +196,51 @@ export default function Attendance() {
               <button type="button" className="button-ghost" onClick={() => setChecking(false)} disabled={busy}>
                 Cancel
               </button>
-              <button type="button" className="button-ghost" onClick={() => punch('out')} disabled={busy}>
+              <button
+                type="button"
+                className="button-ghost"
+                disabled={busy}
+                onClick={() => {
+                  if (!selectedEmployee) {
+                    showToast('Select an employee first', 'error');
+                    return;
+                  }
+                  const person = peopleById[selectedEmployee];
+                  ask({
+                    title: 'Check out',
+                    message: `Check out ${person ? fullName(person) : 'this employee'}?`,
+                    confirmLabel: 'Check out',
+                    onConfirm: () => punch('out'),
+                  });
+                }}
+              >
                 Check out
               </button>
-              <button type="button" className="button-primary" onClick={() => punch('in')} disabled={busy}>
+              <button
+                type="button"
+                className="button-primary"
+                disabled={busy}
+                onClick={() => {
+                  if (!selectedEmployee) {
+                    showToast('Select an employee first', 'error');
+                    return;
+                  }
+                  const person = peopleById[selectedEmployee];
+                  ask({
+                    title: 'Check in',
+                    message: `Check in ${person ? fullName(person) : 'this employee'}?`,
+                    confirmLabel: 'Check in',
+                    onConfirm: () => punch('in'),
+                  });
+                }}
+              >
                 Check in
               </button>
             </div>
           </form>
         </Modal>
       )}
+      {dialog}
     </section>
   );
 }
