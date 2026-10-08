@@ -92,7 +92,18 @@ export default function Settings() {
                   <td data-label="Value">{setting.value}</td>
                   <td className="table-actions" data-label="Action">
                     {can(Permission.SETTINGS_WRITE) && (
-                      <button type="button" className="plain-link" onClick={() => setEditing(setting)}>
+                      <button
+                        type="button"
+                        className="plain-link"
+                        onClick={async () => {
+                          try {
+                            const response = await settingApi.getByKey(setting.key);
+                            setEditing(response.payload || setting);
+                          } catch (err) {
+                            showToast(err.message, 'error');
+                          }
+                        }}
+                      >
                         Edit
                       </button>
                     )}

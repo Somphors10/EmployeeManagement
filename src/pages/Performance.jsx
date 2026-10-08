@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { performanceApi } from '../api/performance';
+import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import ReviewForm from '../components/ReviewForm';
 import { IconPlus } from '../components/Icons';
@@ -12,12 +13,14 @@ import { formatDate, fullName, peopleMap } from '../utils/format';
 export default function Performance() {
   const { showToast } = useToast();
   const { can } = useAuth();
+  const { ask, dialog } = useConfirm();
   const [reviews, setReviews] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
@@ -54,6 +57,34 @@ export default function Performance() {
       await performanceApi.create(payload);
       showToast('Review saved');
       setCreating(false);
+      await load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdate(payload) {
+    if (!editing) return;
+    setBusy(true);
+    try {
+      await performanceApi.update(editing.id, payload);
+      showToast('Review updated');
+      setEditing(null);
+      await load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    setBusy(true);
+    try {
+      await performanceApi.remove(id);
+      showToast('Review deleted');
       await load();
     } catch (err) {
       showToast(err.message, 'error');
@@ -117,6 +148,7 @@ export default function Performance() {
                 <th>Rating</th>
                 <th>Date</th>
                 <th>Comments</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -137,6 +169,42 @@ export default function Performance() {
                     <td data-label="Rating">{review.rating} / 5</td>
                     <td data-label="Date">{formatDate(review.reviewDate)}</td>
                     <td data-label="Comments">{review.comments}</td>
+                    <td className="table-actions" data-label="Action">
+                      {can('performance:write') && (
+                        <>
+                          <button
+                            type="button"
+                            className="plain-link"
+                            onClick={async () => {
+                              try {
+                                const response = await performanceApi.getById(review.id);
+                                setEditing(response.payload || review);
+                              } catch (err) {
+                                showToast(err.message, 'error');
+                              }
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="link-bad"
+                            disabled={busy}
+                            onClick={() =>
+                              ask({
+                                title: 'Delete review',
+                                message: `Delete this review${person ? ` for ${fullName(person)}` : ''}?`,
+                                confirmLabel: 'Delete',
+                                danger: true,
+                                onConfirm: () => handleDelete(review.id),
+                              })
+                            }
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -150,6 +218,18 @@ export default function Performance() {
           <ReviewForm employees={employees} onSubmit={handleCreate} onCancel={() => setCreating(false)} busy={busy} />
         </Modal>
       )}
+      {editing && (
+        <Modal title="Edit review" onClose={() => setEditing(null)}>
+          <ReviewForm
+            employees={employees}
+            initial={editing}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(null)}
+            busy={busy}
+          />
+        </Modal>
+      )}
+      {dialog}
     </section>
   );
 }

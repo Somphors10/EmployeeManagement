@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fullName, todayISO } from '../utils/format';
 
-export default function ReviewForm({ employees = [], onSubmit, onCancel, busy }) {
-  const [form, setForm] = useState({
-    employeeId: '',
-    reviewer: '',
-    rating: '4',
-    comments: '',
-    reviewDate: todayISO(),
-  });
+function toForm(initial) {
+  return {
+    employeeId: initial?.employeeId || '',
+    reviewer: initial?.reviewer || '',
+    rating: String(initial?.rating ?? '4'),
+    comments: initial?.comments || '',
+    reviewDate: initial?.reviewDate ? String(initial.reviewDate).slice(0, 10) : todayISO(),
+  };
+}
+
+export default function ReviewForm({ employees = [], initial, onSubmit, onCancel, busy }) {
+  const [form, setForm] = useState(() => toForm(initial));
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    setForm(toForm(initial));
+    setErrors({});
+  }, [initial]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -87,7 +96,7 @@ export default function ReviewForm({ employees = [], onSubmit, onCancel, busy })
           Cancel
         </button>
         <button type="submit" className="button-primary" disabled={busy}>
-          {busy ? 'Saving…' : 'Save review'}
+          {busy ? 'Saving…' : initial ? 'Save changes' : 'Save review'}
         </button>
       </div>
     </form>

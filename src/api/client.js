@@ -3,10 +3,11 @@ import { getToken, notifyUnauthorized } from './session';
 async function request(url, options = {}) {
   const { skipAuth, headers: extraHeaders, ...rest } = options;
   const token = skipAuth ? null : getToken();
+  const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData;
 
   const response = await fetch(url, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(extraHeaders || {}),
     },
@@ -45,4 +46,41 @@ function withQuery(params = {}) {
   return query ? `?${query}` : '';
 }
 
-export { request, withQuery };
+async function requestBlob(url, options = {}) {
+  const { skipAuth, headers: extraHeaders, ...rest } = options;
+  const token = skipAuth ? null : getToken();
+
+  const response = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(extraHeaders || {}),
+    },
+    ...rest,
+  });
+
+  if (response.status === 401 && !skipAuth) {
+    notifyUnauthorized();
+  }
+
+  if (!response.ok) {
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    const fallback =
+      response.status === 403 ? 'Access denied' : `Request failed with status ${response.status}`;
+    const error = new Error(data?.message || fallback);
+    error.status = response.status;
+    throw error;
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+  const fileName = match ? decodeURIComponent(match[1].replace(/"/g, '')) : 'document';
+  return { blob, fileName, contentType: response.headers.get('Content-Type') };
+}
+
+export { request, requestBlob, withQuery };

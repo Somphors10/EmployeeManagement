@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { announcementApi } from '../api/announcements';
 import { dashboardApi } from '../api/dashboard';
+import { documentApi } from '../api/documents';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
 import { useAuth } from '../auth/AuthContext';
@@ -15,7 +16,7 @@ import {
   IconPeople,
   IconStar,
 } from '../components/Icons';
-import { formatDate, formatDateTime, fullName, prettyEnum, todayLabel } from '../utils/format';
+import { formatDate, formatDateTime, formatFileSize, fullName, prettyEnum, todayLabel } from '../utils/format';
 
 function greeting() {
   const hour = new Date().getHours();
@@ -30,25 +31,30 @@ export default function Dashboard() {
   const [totals, setTotals] = useState(null);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const canViewDocuments = can('documents:view');
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const [people, dashboard, leaves, news] = await Promise.all([
+        const requests = [
           employeeApi.getAll(),
           dashboardApi.getTotals(),
           leaveApi.getAll({ status: 'PENDING' }),
           announcementApi.getAll(),
-        ]);
+        ];
+        if (canViewDocuments) requests.push(documentApi.getAll());
+        const [people, dashboard, leaves, news, files] = await Promise.all(requests);
         if (!cancelled) {
           setEmployees(people.payload || []);
           setTotals(dashboard.payload);
           setPendingLeaves(leaves.payload || []);
           setAnnouncements((news.payload || []).filter((item) => item.published));
+          setDocuments(files?.payload || []);
         }
       } catch (err) {
         if (!cancelled) setError(err.message);
@@ -61,7 +67,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [canViewDocuments]);
 
   const peopleById = Object.fromEntries(employees.map((person) => [person.id, person]));
   const stats = [
@@ -102,6 +108,16 @@ export default function Dashboard() {
       hint: 'Still to mark paid',
       icon: IconPay,
       to: '/payroll',
+    });
+  }
+
+  if (canViewDocuments) {
+    stats.push({
+      label: 'Documents',
+      value: documents.length,
+      hint: 'Uploaded employee files',
+      icon: IconFile,
+      to: '/documents',
     });
   }
 
@@ -243,6 +259,42 @@ export default function Dashboard() {
           </span>
         </Link>
       </div>
+
+      {canViewDocuments && (
+        <article className="panel">
+          <div className="panel-header">
+            <h3>Recent documents</h3>
+            <Link to="/documents">See all</Link>
+          </div>
+          {loading ? (
+            <p className="muted">Loading…</p>
+          ) : documents.length === 0 ? (
+            <p className="muted">No files uploaded yet.</p>
+          ) : (
+            <ul className="simple-list dash-list">
+              {documents.slice(0, 5).map((doc) => {
+                const owner = peopleById[doc.employeeId];
+                return (
+                  <li key={doc.id}>
+                    <Link to={`/documents/${doc.id}`} className="simple-row">
+                      <span className="stat-icon">
+                        <IconFile />
+                      </span>
+                      <span>
+                        <strong>{doc.title}</strong>
+                        <em>
+                          {owner ? fullName(owner) : 'Employee'} · {prettyEnum(doc.documentType)}
+                          {doc.hasFile ? ` · ${formatFileSize(doc.fileSize)}` : ''}
+                        </em>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </article>
+      )}
 
       <article className="panel">
         <div className="panel-header">

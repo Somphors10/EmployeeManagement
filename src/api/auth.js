@@ -11,4 +11,10 @@ export const authApi = {
   me() {
     return request('/api/v1/auth/me');
   },
+  changePassword(currentPassword, newPassword) {
+    return request('/api/v1/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
 };

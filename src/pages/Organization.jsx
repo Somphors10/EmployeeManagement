@@ -133,7 +133,18 @@ export default function Organization() {
                     <td className="table-actions" data-label="Action">
                       {can('organization:write') && (
                         <>
-                          <button type="button" className="plain-link" onClick={() => setEditing(dept)}>
+                          <button
+                            type="button"
+                            className="plain-link"
+                            onClick={async () => {
+                              try {
+                                const response = await organizationApi.getById(dept.id);
+                                setEditing(response.payload || dept);
+                              } catch (err) {
+                                showToast(err.message, 'error');
+                              }
+                            }}
+                          >
                             Edit
                           </button>
                           <button

@@ -2,13 +2,24 @@ import { useState } from 'react';
 import { fullName, prettyEnum } from '../utils/format';
 
 const DOCUMENT_TYPES = ['CONTRACT', 'ID_CARD', 'CERTIFICATE', 'OTHER'];
+const ACCEPTED_TYPES = '.pdf,.png,.jpg,.jpeg,.doc,.docx,.webp';
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-export default function DocumentForm({ employees = [], onSubmit, onCancel, busy }) {
+export default function DocumentForm({
+  employees = [],
+  onSubmit,
+  onCancel,
+  busy,
+  initial = null,
+  defaultEmployeeId = '',
+  lockEmployee = false,
+}) {
+  const isEdit = Boolean(initial);
   const [form, setForm] = useState({
-    employeeId: '',
-    title: '',
-    fileUrl: '',
-    documentType: 'CONTRACT',
+    employeeId: initial?.employeeId || defaultEmployeeId || '',
+    title: initial?.title || '',
+    documentType: initial?.documentType || 'CONTRACT',
+    file: null,
   });
   const [errors, setErrors] = useState({});
 
@@ -17,39 +28,47 @@ export default function DocumentForm({ employees = [], onSubmit, onCancel, busy 
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  function updateFile(event) {
+    const file = event.target.files?.[0] || null;
+    setForm((current) => ({ ...current, file }));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.employeeId) nextErrors.employeeId = 'Employee is required';
+    if (!isEdit && !form.employeeId) nextErrors.employeeId = 'Employee is required';
     if (!form.title.trim()) nextErrors.title = 'Title is required';
-    if (!form.fileUrl.trim()) nextErrors.fileUrl = 'File URL is required';
     if (!form.documentType) nextErrors.documentType = 'Type is required';
+    if (!isEdit && !form.file) nextErrors.file = 'File is required';
+    if (form.file && form.file.size > MAX_FILE_BYTES) nextErrors.file = 'File must be 10MB or smaller';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     await onSubmit({
       employeeId: form.employeeId,
       title: form.title.trim(),
-      fileUrl: form.fileUrl.trim(),
       documentType: form.documentType,
+      file: form.file,
     });
   }
 
   return (
     <form className="employee-form" onSubmit={handleSubmit}>
       <div className="form-grid">
-        <label className="field field-wide">
-          <span>Employee</span>
-          <select name="employeeId" value={form.employeeId} onChange={updateField}>
-            <option value="">Select an employee</option>
-            {employees.map((person) => (
-              <option key={person.id} value={person.id}>
-                {fullName(person)}
-              </option>
-            ))}
-          </select>
-          {errors.employeeId && <small>{errors.employeeId}</small>}
-        </label>
+        {!isEdit && !lockEmployee && (
+          <label className="field field-wide">
+            <span>Employee</span>
+            <select name="employeeId" value={form.employeeId} onChange={updateField}>
+              <option value="">Select an employee</option>
+              {employees.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {fullName(person)}
+                </option>
+              ))}
+            </select>
+            {errors.employeeId && <small>{errors.employeeId}</small>}
+          </label>
+        )}
         <label className="field">
           <span>Title</span>
           <input name="title" value={form.title} onChange={updateField} placeholder="Employment contract" />
@@ -66,14 +85,13 @@ export default function DocumentForm({ employees = [], onSubmit, onCancel, busy 
           </select>
         </label>
         <label className="field field-wide">
-          <span>File URL</span>
-          <input
-            name="fileUrl"
-            value={form.fileUrl}
-            onChange={updateField}
-            placeholder="https://files.company.com/contracts/jane.pdf"
-          />
-          {errors.fileUrl && <small>{errors.fileUrl}</small>}
+          <span>{isEdit ? 'Replace file (optional)' : 'File'}</span>
+          <input type="file" name="file" accept={ACCEPTED_TYPES} onChange={updateFile} />
+          {form.file && <small className="muted">{form.file.name}</small>}
+          {isEdit && initial?.originalFileName && !form.file && (
+            <small className="muted">Current file: {initial.originalFileName}</small>
+          )}
+          {errors.file && <small>{errors.file}</small>}
         </label>
       </div>
       <div className="form-actions">
@@ -81,7 +99,7 @@ export default function DocumentForm({ employees = [], onSubmit, onCancel, busy 
           Cancel
         </button>
         <button type="submit" className="button-primary" disabled={busy}>
-          {busy ? 'Saving…' : 'Add document'}
+          {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Upload document'}
         </button>
       </div>
     </form>

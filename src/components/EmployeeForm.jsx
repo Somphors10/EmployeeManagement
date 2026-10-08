@@ -8,6 +8,10 @@ const EMPTY_FORM = {
   position: '',
   department: '',
   hireDate: '',
+  nationalId: '',
+  dateOfBirth: '',
+  address: '',
+  salary: '',
 };
 
 const DEPARTMENTS = [
@@ -45,6 +49,8 @@ export default function EmployeeForm({
       ...EMPTY_FORM,
       ...(initialValues || {}),
       hireDate: toInputDate(initialValues?.hireDate),
+      dateOfBirth: toInputDate(initialValues?.dateOfBirth),
+      salary: initialValues?.salary ?? '',
     });
     setErrors({});
   }, [initialValues]);
@@ -86,6 +92,10 @@ export default function EmployeeForm({
       position: form.position.trim(),
       department: form.department.trim(),
       hireDate: form.hireDate,
+      nationalId: form.nationalId.trim() || null,
+      dateOfBirth: form.dateOfBirth || null,
+      address: form.address.trim() || null,
+      salary: form.salary === '' ? null : Number(form.salary),
     });
   }
 
@@ -144,10 +154,26 @@ export default function EmployeeForm({
           </datalist>
           {errors.department && <small>{errors.department}</small>}
         </label>
-        <label className="field field-wide">
+        <label className="field">
           <span>Hire date</span>
           <input name="hireDate" type="date" value={form.hireDate} onChange={updateField} />
           {errors.hireDate && <small>{errors.hireDate}</small>}
+        </label>
+        <label className="field">
+          <span>National ID</span>
+          <input name="nationalId" value={form.nationalId} onChange={updateField} />
+        </label>
+        <label className="field">
+          <span>Date of birth</span>
+          <input name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={updateField} />
+        </label>
+        <label className="field">
+          <span>Salary</span>
+          <input name="salary" type="number" min="0" step="0.01" value={form.salary} onChange={updateField} />
+        </label>
+        <label className="field field-wide">
+          <span>Address</span>
+          <input name="address" value={form.address} onChange={updateField} />
         </label>
       </div>
       <div className="form-actions">

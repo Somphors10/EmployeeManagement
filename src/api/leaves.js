@@ -21,4 +21,10 @@ export const leaveApi = {
   reject(id) {
     return request(`${BASE_URL}/${id}/reject`, { method: 'PATCH' });
   },
+  cancel(id) {
+    return request(`${BASE_URL}/${id}/cancel`, { method: 'PATCH' });
+  },
+  balances(employeeId) {
+    return request(`${BASE_URL}/balances${withQuery({ employeeId })}`);
+  },
 };

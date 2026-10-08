@@ -7,16 +7,22 @@ import { ToastProvider } from './components/Toast';
 import Announcements from './pages/Announcements';
 import Attendance from './pages/Attendance';
 import Dashboard from './pages/Dashboard';
+import DocumentDetail from './pages/DocumentDetail';
 import Documents from './pages/Documents';
 import EmployeeDetail from './pages/EmployeeDetail';
 import Employees from './pages/Employees';
 import Forbidden from './pages/Forbidden';
 import Leaves from './pages/Leaves';
 import Login from './pages/Login';
+import Holidays from './pages/Holidays';
 import Organization from './pages/Organization';
+import Overtime from './pages/Overtime';
 import Payroll from './pages/Payroll';
 import Performance from './pages/Performance';
+import Profile from './pages/Profile';
+import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Users from './pages/Users';
 
 export default function App() {
   return (
@@ -89,6 +95,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/documents/:id"
+                element={
+                  <RequirePermission permission={Permission.DOCUMENTS_VIEW}>
+                    <DocumentDetail />
+                  </RequirePermission>
+                }
+              />
+              <Route
                 path="/performance"
                 element={
                   <RequirePermission permission={Permission.PERFORMANCE_VIEW}>
@@ -104,6 +118,39 @@ export default function App() {
                   </RequirePermission>
                 }
               />
+              <Route
+                path="/overtime"
+                element={
+                  <RequirePermission permission={Permission.OVERTIME_VIEW}>
+                    <Overtime />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/holidays"
+                element={
+                  <RequirePermission permission={Permission.HOLIDAYS_VIEW}>
+                    <Holidays />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <RequirePermission permission={Permission.REPORTS_VIEW}>
+                    <Reports />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <RequirePermission permission={Permission.USERS_WRITE}>
+                    <Users />
+                  </RequirePermission>
+                }
+              />
+              <Route path="/profile" element={<Profile />} />
               <Route
                 path="/announcements"
                 element={

@@ -19,6 +19,14 @@ export const Permission = {
   ANNOUNCEMENTS_WRITE: 'announcements:write',
   SETTINGS_VIEW: 'settings:view',
   SETTINGS_WRITE: 'settings:write',
+  USERS_WRITE: 'users:write',
+  HOLIDAYS_VIEW: 'holidays:view',
+  HOLIDAYS_WRITE: 'holidays:write',
+  OVERTIME_VIEW: 'overtime:view',
+  OVERTIME_WRITE: 'overtime:write',
+  OVERTIME_DECIDE: 'overtime:decide',
+  REPORTS_VIEW: 'reports:view',
+  NOTIFICATIONS_VIEW: 'notifications:view',
 };
 
 export const NAV = [
@@ -30,7 +38,11 @@ export const NAV = [
   { key: 'documents', label: 'Documents', path: '/documents', permission: Permission.DOCUMENTS_VIEW },
   { key: 'performance', label: 'Performance', path: '/performance', permission: Permission.PERFORMANCE_VIEW },
   { key: 'organization', label: 'Organization', path: '/organization', permission: Permission.ORGANIZATION_VIEW },
+  { key: 'overtime', label: 'Overtime', path: '/overtime', permission: Permission.OVERTIME_VIEW },
+  { key: 'holidays', label: 'Holidays', path: '/holidays', permission: Permission.HOLIDAYS_VIEW },
   { key: 'announcements', label: 'Announcements', path: '/announcements', permission: Permission.ANNOUNCEMENTS_VIEW },
+  { key: 'reports', label: 'Reports', path: '/reports', permission: Permission.REPORTS_VIEW },
+  { key: 'users', label: 'Users', path: '/users', permission: Permission.USERS_WRITE },
   { key: 'settings', label: 'Settings', path: '/settings', permission: Permission.SETTINGS_VIEW },
 ];
 
@@ -47,9 +59,14 @@ const EMPLOYEE = [
   Permission.PERFORMANCE_VIEW,
   Permission.ORGANIZATION_VIEW,
   Permission.ANNOUNCEMENTS_VIEW,
+  Permission.PAYROLL_VIEW,
+  Permission.HOLIDAYS_VIEW,
+  Permission.OVERTIME_VIEW,
+  Permission.OVERTIME_WRITE,
+  Permission.NOTIFICATIONS_VIEW,
 ];
 
-const MANAGER = [...EMPLOYEE, Permission.LEAVES_DECIDE, Permission.PERFORMANCE_WRITE];
+const MANAGER = [...EMPLOYEE, Permission.LEAVES_DECIDE, Permission.PERFORMANCE_WRITE, Permission.OVERTIME_DECIDE];
 
 const HR = [
   ...MANAGER,
@@ -60,9 +77,11 @@ const HR = [
   Permission.ORGANIZATION_WRITE,
   Permission.ANNOUNCEMENTS_WRITE,
   Permission.SETTINGS_VIEW,
+  Permission.HOLIDAYS_WRITE,
+  Permission.REPORTS_VIEW,
 ];
 
-const ADMIN = [...HR, Permission.SETTINGS_WRITE];
+const ADMIN = [...HR, Permission.SETTINGS_WRITE, Permission.USERS_WRITE];
 
 const ROLE_PERMISSIONS = { ADMIN, HR, MANAGER, EMPLOYEE };
 

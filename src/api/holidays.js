@@ -1,13 +1,10 @@
-import { request, withQuery } from './client';
+import { request } from './client';
 
-const BASE = '/api/v1/performance-reviews';
+const BASE = '/api/v1/holidays';
 
-export const performanceApi = {
-  getAll(employeeId) {
-    return request(`${BASE}${withQuery({ employeeId })}`);
-  },
-  getById(id) {
-    return request(`${BASE}/${id}`);
+export const holidayApi = {
+  getAll() {
+    return request(BASE);
   },
   create(payload) {
     return request(BASE, { method: 'POST', body: JSON.stringify(payload) });

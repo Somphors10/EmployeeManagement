@@ -145,7 +145,7 @@ export default function Payroll() {
               <tr>
                 <th>Employee</th>
                 <th>Period</th>
-                <th>Amount</th>
+                <th>Net pay</th>
                 <th>Status</th>
                 <th />
               </tr>
@@ -167,13 +167,36 @@ export default function Payroll() {
                     <td data-label="Period">
                       {formatDate(row.periodStart)} – {formatDate(row.periodEnd)}
                     </td>
-                    <td data-label="Amount">{formatMoney(row.amount)}</td>
+                    <td data-label="Net pay">{formatMoney(row.netAmount || row.amount)}</td>
                     <td data-label="Status">
                       <span className={`status-badge ${String(row.status || '').toLowerCase()}`}>
                         {prettyEnum(row.status)}
                       </span>
                     </td>
                     <td className="table-actions" data-label="Action">
+                      <button
+                        type="button"
+                        className="plain-link"
+                        onClick={async () => {
+                          try {
+                            const { blob, fileName } = await payrollApi.payslip(row.id);
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.target = '_blank';
+                            link.rel = 'noreferrer';
+                            link.download = fileName || 'payslip.pdf';
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                          } catch (err) {
+                            showToast(err.message, 'error');
+                          }
+                        }}
+                      >
+                        Payslip
+                      </button>
                       {row.status === 'PENDING' && can('payroll:write') && (
                         <button
                           type="button"

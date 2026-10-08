@@ -101,7 +101,18 @@ export default function Announcements() {
             <p>{item.content}</p>
             {can('announcements:write') && (
               <div className="table-actions">
-                <button type="button" className="plain-link" onClick={() => setEditing(item)}>
+                <button
+                  type="button"
+                  className="plain-link"
+                  onClick={async () => {
+                    try {
+                      const response = await announcementApi.getById(item.id);
+                      setEditing(response.payload || item);
+                    } catch (err) {
+                      showToast(err.message, 'error');
+                    }
+                  }}
+                >
                   Edit
                 </button>
                 <button

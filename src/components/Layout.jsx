@@ -30,6 +30,10 @@ const NAV_ICONS = {
   performance: IconStar,
   organization: IconPeople,
   announcements: IconMegaphone,
+  overtime: IconClock,
+  holidays: IconLeave,
+  reports: IconPay,
+  users: IconPeople,
   settings: IconSettings,
 };
 
@@ -121,7 +125,9 @@ export default function Layout() {
 
         <div className="sidebar-user">
           <div className="sidebar-user-copy">
-            <strong>{user?.username}</strong>
+            <NavLink to="/profile" className="plain-link">
+              <strong>{user?.username}</strong>
+            </NavLink>
             <em>{user?.role}</em>
           </div>
           <button

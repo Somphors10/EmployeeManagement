@@ -23,6 +23,7 @@ export default function Employees() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [summary, setSummary] = useState(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -31,12 +32,14 @@ export default function Employees() {
 
   async function loadLookups() {
     try {
-      const [deptRes, posRes] = await Promise.all([
+      const [deptRes, posRes, summaryRes] = await Promise.all([
         employeeApi.getDepartments(),
         employeeApi.getPositions(),
+        employeeApi.getSummary(),
       ]);
       setDepartments(deptRes.payload || []);
       setPositions(posRes.payload || []);
+      setSummary(summaryRes.payload);
     } catch {
       setDepartments([]);
       setPositions([]);
@@ -103,6 +106,25 @@ export default function Employees() {
         )}
       </header>
 
+      <div className="stat-grid">
+        <article className="stat-card">
+          <p>Total</p>
+          <strong>{summary?.totalEmployees ?? employees.length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Active</p>
+          <strong>{summary?.activeEmployees ?? '—'}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Inactive</p>
+          <strong>{summary?.inactiveEmployees ?? '—'}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Departments</p>
+          <strong>{summary?.byDepartment?.length ?? departments.length}</strong>
+        </article>
+      </div>
+
       <div className="filter-bar">
         <label className="search-field">
           <IconSearch />
@@ -167,7 +189,9 @@ export default function Employees() {
                       {prettyEnum(employee.status)}
                     </span>
                   </td>
-                  <td data-label="Hired">{formatDate(employee.hireDate)}</td>
+                  <td className="date-cell" data-label="Hired">
+                    {formatDate(employee.hireDate)}
+                  </td>
                 </tr>
               ))}
             </tbody>

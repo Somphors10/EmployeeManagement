@@ -8,7 +8,7 @@ import Modal from '../components/Modal';
 import { IconPlus } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
-import { formatDateTime, fullName, peopleMap, prettyEnum } from '../utils/format';
+import { formatDateTime, formatFileSize, fullName, peopleMap, prettyEnum } from '../utils/format';
 
 export default function Documents() {
   const { showToast } = useToast();
@@ -20,7 +20,9 @@ export default function Documents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [fileBusy, setFileBusy] = useState('');
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
 
@@ -50,13 +52,50 @@ export default function Documents() {
     setBusy(true);
     try {
       await documentApi.create(payload);
-      showToast('Document added');
+      showToast('Document uploaded');
       setCreating(false);
       await load();
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function startEdit(id) {
+    setBusy(true);
+    try {
+      const response = await documentApi.getById(id);
+      setEditing(response.payload);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdate(payload) {
+    setBusy(true);
+    try {
+      await documentApi.update(editing.id, payload);
+      showToast('Document updated');
+      setEditing(null);
+      await load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFile(doc) {
+    setFileBusy(`download-${doc.id}`);
+    try {
+      await documentApi.downloadFile(doc.id);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setFileBusy('');
     }
   }
 
@@ -78,7 +117,7 @@ export default function Documents() {
       <header className="page-header">
         <div>
           <h2>Documents</h2>
-          <p className="page-copy">Store employee file metadata and open the linked files.</p>
+          <p className="page-copy">Upload, open, update, and delete employee files.</p>
         </div>
         {can('documents:write') && (
           <button className="button-primary" onClick={() => setCreating(true)}>
@@ -106,7 +145,7 @@ export default function Documents() {
         ) : documents.length === 0 ? (
           <div className="empty-state">
             <h3>No documents yet</h3>
-            <p>Add a file URL and document type for an employee.</p>
+            <p>Upload a PDF, image, or Word file for an employee.</p>
           </div>
         ) : (
           <table className="data-table">
@@ -115,6 +154,7 @@ export default function Documents() {
                 <th>Title</th>
                 <th>Employee</th>
                 <th>Type</th>
+                <th>File</th>
                 <th>Uploaded</th>
                 <th />
               </tr>
@@ -124,7 +164,11 @@ export default function Documents() {
                 const person = peopleById[doc.employeeId];
                 return (
                   <tr key={doc.id}>
-                    <td data-label="Title">{doc.title}</td>
+                    <td data-label="Title">
+                      <Link to={`/documents/${doc.id}`} className="plain-link">
+                        {doc.title}
+                      </Link>
+                    </td>
                     <td data-label="Employee">
                       {person ? (
                         <Link to={`/employees/${person.id}`} className="plain-link">
@@ -137,12 +181,32 @@ export default function Documents() {
                     <td data-label="Type">
                       <span className="status-badge">{prettyEnum(doc.documentType)}</span>
                     </td>
+                    <td data-label="File">
+                      {doc.hasFile
+                        ? `${doc.originalFileName || 'File'} · ${formatFileSize(doc.fileSize)}`
+                        : 'No file'}
+                    </td>
                     <td data-label="Uploaded">{formatDateTime(doc.uploadedAt)}</td>
                     <td className="table-actions" data-label="Action">
-                      {doc.fileUrl && (
-                        <a className="plain-link" href={doc.fileUrl} target="_blank" rel="noreferrer">
-                          Open
-                        </a>
+                      {doc.hasFile && (
+                        <>
+                          <Link to={`/documents/${doc.id}`} className="plain-link">
+                            Open
+                          </Link>
+                          <button
+                            type="button"
+                            className="plain-link"
+                            disabled={fileBusy === `download-${doc.id}`}
+                            onClick={() => handleFile(doc)}
+                          >
+                            {fileBusy === `download-${doc.id}` ? 'Saving…' : 'Download'}
+                          </button>
+                        </>
+                      )}
+                      {can('documents:write') && (
+                        <button type="button" className="plain-link" onClick={() => startEdit(doc.id)}>
+                          Edit
+                        </button>
                       )}
                       {can('documents:write') && (
                         <button
@@ -172,8 +236,19 @@ export default function Documents() {
       </div>
 
       {creating && (
-        <Modal title="Add document" onClose={() => setCreating(false)}>
+        <Modal title="Upload document" onClose={() => setCreating(false)}>
           <DocumentForm employees={employees} onSubmit={handleCreate} onCancel={() => setCreating(false)} busy={busy} />
+        </Modal>
+      )}
+      {editing && (
+        <Modal title="Edit document" onClose={() => setEditing(null)}>
+          <DocumentForm
+            employees={employees}
+            initial={editing}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(null)}
+            busy={busy}
+          />
         </Modal>
       )}
       {dialog}

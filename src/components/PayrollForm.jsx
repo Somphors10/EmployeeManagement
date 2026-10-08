@@ -7,6 +7,9 @@ export default function PayrollForm({ employees = [], onSubmit, onCancel, busy }
     periodStart: '',
     periodEnd: '',
     amount: '',
+    allowances: '0',
+    deductions: '0',
+    tax: '0',
   });
   const [errors, setErrors] = useState({});
 
@@ -32,7 +35,10 @@ export default function PayrollForm({ employees = [], onSubmit, onCancel, busy }
       employeeId: form.employeeId,
       periodStart: form.periodStart,
       periodEnd: form.periodEnd,
-      amount: Number(form.amount),
+      basicSalary: Number(form.amount),
+      allowances: Number(form.allowances || 0),
+      deductions: Number(form.deductions || 0),
+      tax: Number(form.tax || 0),
     });
   }
 
@@ -61,10 +67,22 @@ export default function PayrollForm({ employees = [], onSubmit, onCancel, busy }
           <input name="periodEnd" type="date" value={form.periodEnd} onChange={updateField} />
           {errors.periodEnd && <small>{errors.periodEnd}</small>}
         </label>
-        <label className="field field-wide">
-          <span>Amount</span>
+        <label className="field">
+          <span>Basic salary</span>
           <input name="amount" type="number" min="0" step="0.01" value={form.amount} onChange={updateField} />
           {errors.amount && <small>{errors.amount}</small>}
+        </label>
+        <label className="field">
+          <span>Allowances</span>
+          <input name="allowances" type="number" min="0" step="0.01" value={form.allowances} onChange={updateField} />
+        </label>
+        <label className="field">
+          <span>Deductions</span>
+          <input name="deductions" type="number" min="0" step="0.01" value={form.deductions} onChange={updateField} />
+        </label>
+        <label className="field">
+          <span>Tax</span>
+          <input name="tax" type="number" min="0" step="0.01" value={form.tax} onChange={updateField} />
         </label>
       </div>
       <div className="form-actions">

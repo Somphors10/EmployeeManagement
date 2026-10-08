@@ -21,6 +21,7 @@ export default function Leaves() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [balances, setBalances] = useState([]);
 
   const peopleById = useMemo(
     () => Object.fromEntries(employees.map((person) => [person.id, person])),
@@ -31,12 +32,14 @@ export default function Leaves() {
     setLoading(true);
     setError('');
     try {
-      const [leaveRes, peopleRes] = await Promise.all([
+      const [leaveRes, peopleRes, balanceRes] = await Promise.all([
         leaveApi.getAll({ status: status || undefined }),
         employeeApi.getAll(),
+        leaveApi.balances(user?.employeeId || undefined).catch(() => ({ payload: [] })),
       ]);
       setLeaves(leaveRes.payload || []);
       setEmployees(peopleRes.payload || []);
+      setBalances(balanceRes.payload || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -97,6 +100,7 @@ export default function Leaves() {
           ['PENDING', 'Pending'],
           ['APPROVED', 'Approved'],
           ['REJECTED', 'Rejected'],
+          ['CANCELLED', 'Cancelled'],
           ['', 'All'],
         ].map(([value, label]) => (
           <button
@@ -109,6 +113,16 @@ export default function Leaves() {
           </button>
         ))}
       </div>
+
+      {balances.length > 0 && (
+        <div className="filter-bar">
+          {balances.map((item) => (
+            <span key={item.type} className="status-badge">
+              {prettyEnum(item.type)}: {item.remaining} left ({item.used} used)
+            </span>
+          ))}
+        </div>
+      )}
 
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -159,6 +173,28 @@ export default function Leaves() {
                       </span>
                     </td>
                     <td className="table-actions" data-label="Action">
+                      {leave.status === 'PENDING' && can('leaves:create') && leave.employeeId === user?.employeeId && (
+                        <button
+                          type="button"
+                          className="link-bad"
+                          disabled={busy}
+                          onClick={() =>
+                            ask({
+                              title: 'Cancel leave',
+                              message: 'Cancel this pending leave request?',
+                              confirmLabel: 'Cancel request',
+                              danger: true,
+                              onConfirm: () =>
+                                leaveApi.cancel(leave.id).then(() => {
+                                  showToast('Leave cancelled');
+                                  return load();
+                                }),
+                            })
+                          }
+                        >
+                          Cancel
+                        </button>
+                      )}
                       {leave.status === 'PENDING' && can('leaves:decide') && (
                         <>
                           <button

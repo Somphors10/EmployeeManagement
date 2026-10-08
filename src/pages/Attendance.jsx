@@ -9,6 +9,16 @@ import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, formatTime, fullName, peopleMap, prettyEnum, todayISO } from '../utils/format';
 
+function monthStartISO() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function toTimeInput(value) {
+  if (!value) return '';
+  return String(value).slice(0, 5);
+}
+
 export default function Attendance() {
   const { showToast } = useToast();
   const { can, user } = useAuth();
@@ -16,12 +26,20 @@ export default function Attendance() {
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
-  const [date, setDate] = useState(todayISO());
+  const [from, setFrom] = useState(monthStartISO());
+  const [to, setTo] = useState(todayISO());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(user?.employeeId || '');
   const [busy, setBusy] = useState(false);
+  const [correcting, setCorrecting] = useState(null);
+  const [correction, setCorrection] = useState({
+    checkIn: '',
+    checkOut: '',
+    status: 'PRESENT',
+    overtimeHours: '',
+  });
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
   const todayRecords = records.filter((row) => row.workDate === todayISO());
@@ -33,7 +51,8 @@ export default function Attendance() {
       const [attendanceRes, peopleRes] = await Promise.all([
         attendanceApi.getAll({
           employeeId: employeeId || undefined,
-          date: date || undefined,
+          from: from || undefined,
+          to: to || undefined,
         }),
         employeeApi.getAll(),
       ]);
@@ -49,7 +68,7 @@ export default function Attendance() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId, date]);
+  }, [employeeId, from, to]);
 
   async function punch(action) {
     if (!selectedEmployee) {
@@ -71,12 +90,49 @@ export default function Attendance() {
     }
   }
 
+  async function openCorrection(row) {
+    try {
+      const response = await attendanceApi.getById(row.id);
+      const record = response.payload || row;
+      setCorrecting(record);
+      setCorrection({
+        checkIn: toTimeInput(record.checkIn),
+        checkOut: toTimeInput(record.checkOut),
+        status: record.status || 'PRESENT',
+        overtimeHours: record.overtimeHours ?? '',
+      });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function saveCorrection(event) {
+    event.preventDefault();
+    if (!correcting) return;
+    setBusy(true);
+    try {
+      await attendanceApi.correct(correcting.id, {
+        checkIn: correction.checkIn || null,
+        checkOut: correction.checkOut || null,
+        status: correction.status || null,
+        overtimeHours: correction.overtimeHours === '' ? null : Number(correction.overtimeHours),
+      });
+      showToast('Attendance updated');
+      setCorrecting(null);
+      await load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="page">
       <header className="page-header">
         <div>
           <h2>Attendance</h2>
-          <p className="page-copy">Check people in and out, then review the day&apos;s records.</p>
+          <p className="page-copy">Check people in and out, then review a date range or correct a record.</p>
         </div>
         {can('attendance:check') && (
           <button
@@ -119,8 +175,26 @@ export default function Attendance() {
             </option>
           ))}
         </select>
-        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-        <button type="button" className="button-ghost" onClick={() => setDate('')}>
+        <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+        <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+        <button
+          type="button"
+          className="button-ghost"
+          onClick={() => {
+            setFrom(monthStartISO());
+            setTo(todayISO());
+          }}
+        >
+          This month
+        </button>
+        <button
+          type="button"
+          className="button-ghost"
+          onClick={() => {
+            setFrom('');
+            setTo('');
+          }}
+        >
           All dates
         </button>
       </div>
@@ -143,7 +217,9 @@ export default function Attendance() {
                 <th>Date</th>
                 <th>Check in</th>
                 <th>Check out</th>
+                <th>OT hours</th>
                 <th>Status</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -163,10 +239,18 @@ export default function Attendance() {
                     <td data-label="Date">{formatDate(row.workDate)}</td>
                     <td data-label="Check in">{formatTime(row.checkIn)}</td>
                     <td data-label="Check out">{formatTime(row.checkOut)}</td>
+                    <td data-label="OT hours">{row.overtimeHours ?? '—'}</td>
                     <td data-label="Status">
                       <span className={`status-badge ${String(row.status || '').toLowerCase().replaceAll('_', '-')}`}>
                         {prettyEnum(row.status)}
                       </span>
+                    </td>
+                    <td className="table-actions" data-label="Action">
+                      {can('employees:write') && (
+                        <button type="button" className="plain-link" onClick={() => openCorrection(row)}>
+                          Correct
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -235,6 +319,64 @@ export default function Attendance() {
                 }}
               >
                 Check in
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {correcting && (
+        <Modal title="Correct attendance" onClose={() => setCorrecting(null)}>
+          <form className="employee-form" onSubmit={saveCorrection}>
+            <div className="form-grid">
+              <label className="field">
+                <span>Check in</span>
+                <input
+                  type="time"
+                  value={correction.checkIn}
+                  onChange={(event) => setCorrection((current) => ({ ...current, checkIn: event.target.value }))}
+                />
+              </label>
+              <label className="field">
+                <span>Check out</span>
+                <input
+                  type="time"
+                  value={correction.checkOut}
+                  onChange={(event) => setCorrection((current) => ({ ...current, checkOut: event.target.value }))}
+                />
+              </label>
+              <label className="field">
+                <span>Status</span>
+                <select
+                  value={correction.status}
+                  onChange={(event) => setCorrection((current) => ({ ...current, status: event.target.value }))}
+                >
+                  {['PRESENT', 'LATE', 'ABSENT', 'ON_LEAVE'].map((status) => (
+                    <option key={status} value={status}>
+                      {prettyEnum(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Overtime hours</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={correction.overtimeHours}
+                  onChange={(event) =>
+                    setCorrection((current) => ({ ...current, overtimeHours: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+            <div className="form-actions">
+              <button type="button" className="button-ghost" onClick={() => setCorrecting(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" className="button-primary" disabled={busy}>
+                {busy ? 'Saving…' : 'Save correction'}
               </button>
             </div>
           </form>

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { documentApi } from '../api/documents';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
 import Avatar from '../components/Avatar';
+import DocumentForm from '../components/DocumentForm';
 import EmployeeForm from '../components/EmployeeForm';
 import LeaveForm from '../components/LeaveForm';
 import ManagerForm from '../components/ManagerForm';
@@ -12,14 +14,7 @@ import Modal from '../components/Modal';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import TransferForm from '../components/TransferForm';
-import { formatDate, formatDateTime, fullName, prettyEnum } from '../utils/format';
-
-const TABS = [
-  ['overview', 'Overview'],
-  ['team', 'Team'],
-  ['leave', 'Leave'],
-  ['history', 'History'],
-];
+import { formatDate, formatDateTime, formatFileSize, formatMoney, fullName, prettyEnum } from '../utils/format';
 
 export default function EmployeeDetail() {
   const { id } = useParams();
@@ -35,10 +30,13 @@ export default function EmployeeDetail() {
   const [subordinates, setSubordinates] = useState([]);
   const [history, setHistory] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState('');
   const [busy, setBusy] = useState(false);
+  const [fileBusy, setFileBusy] = useState('');
+  const [editingDoc, setEditingDoc] = useState(null);
 
   const peopleById = useMemo(
     () => Object.fromEntries(people.map((person) => [person.id, person])),
@@ -49,7 +47,7 @@ export default function EmployeeDetail() {
     setLoading(true);
     setError('');
     try {
-      const [person, allPeople, depts, roles, reports, events, timeOff] = await Promise.all([
+      const requests = [
         employeeApi.getById(id),
         employeeApi.getAll(),
         employeeApi.getDepartments(),
@@ -57,7 +55,10 @@ export default function EmployeeDetail() {
         employeeApi.getSubordinates(id),
         employeeApi.getHistory(id),
         leaveApi.getAll({ employeeId: id }),
-      ]);
+      ];
+      if (can('documents:view')) requests.push(documentApi.getAll(id));
+      const [person, allPeople, depts, roles, reports, events, timeOff, files] =
+        await Promise.all(requests);
       setEmployee(person.payload);
       setPeople(allPeople.payload || []);
       setDepartments(depts.payload || []);
@@ -65,6 +66,7 @@ export default function EmployeeDetail() {
       setSubordinates(reports.payload || []);
       setHistory(events.payload || []);
       setLeaves(timeOff.payload || []);
+      setDocuments(files?.payload || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -179,16 +181,24 @@ export default function EmployeeDetail() {
       </header>
 
       <div className="tabs">
-        {TABS.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className={`tab ${tab === value ? 'active' : ''}`}
-            onClick={() => setTab(value)}
-          >
-            {label}
-          </button>
-        ))}
+        {[
+          ['overview', 'Overview'],
+          ['team', 'Team'],
+          ['leave', 'Leave'],
+          can('documents:view') ? ['files', 'Documents'] : null,
+          ['history', 'History'],
+        ]
+          .filter(Boolean)
+          .map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={`tab ${tab === value ? 'active' : ''}`}
+              onClick={() => setTab(value)}
+            >
+              {label}
+            </button>
+          ))}
       </div>
 
       {tab === 'overview' && (
@@ -238,6 +248,44 @@ export default function EmployeeDetail() {
                 </strong>
               </div>
             </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconCalendar />
+              </span>
+              <div>
+                <p>Date of birth</p>
+                <strong>{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : '—'}</strong>
+              </div>
+            </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconPeople />
+              </span>
+              <div>
+                <p>National ID</p>
+                <strong>{employee.nationalId || '—'}</strong>
+              </div>
+            </article>
+            <article className="profile-fact">
+              <span className="stat-icon">
+                <IconMail />
+              </span>
+              <div>
+                <p>Address</p>
+                <strong>{employee.address || '—'}</strong>
+              </div>
+            </article>
+            {can('payroll:view') && (
+              <article className="profile-fact">
+                <span className="stat-icon">
+                  <IconPhone />
+                </span>
+                <div>
+                  <p>Salary</p>
+                  <strong>{employee.salary != null ? formatMoney(employee.salary) : '—'}</strong>
+                </div>
+              </article>
+            )}
           </div>
 
           <aside className="profile-side">
@@ -377,6 +425,104 @@ export default function EmployeeDetail() {
         </article>
       )}
 
+      {tab === 'files' && (
+        <article className="panel">
+          <div className="panel-header">
+            <h3>Documents</h3>
+            {can('documents:write') && (
+              <button type="button" className="button-ghost" onClick={() => setModal('document')}>
+                Upload file
+              </button>
+            )}
+          </div>
+          {documents.length === 0 ? (
+            <p className="muted">No files uploaded for this employee.</p>
+          ) : (
+            <table className="data-table compact">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>File</th>
+                  <th>Uploaded</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map((doc) => (
+                  <tr key={doc.id}>
+                    <td data-label="Title">
+                      <Link to={`/documents/${doc.id}`} className="plain-link">
+                        {doc.title}
+                      </Link>
+                    </td>
+                    <td data-label="Type">{prettyEnum(doc.documentType)}</td>
+                    <td data-label="File">
+                      {doc.hasFile
+                        ? `${doc.originalFileName || 'File'} · ${formatFileSize(doc.fileSize)}`
+                        : 'No file'}
+                    </td>
+                    <td data-label="Uploaded">{formatDateTime(doc.uploadedAt)}</td>
+                    <td className="table-actions" data-label="Action">
+                      {doc.hasFile && (
+                        <>
+                          <Link to={`/documents/${doc.id}`} className="plain-link">
+                            Open
+                          </Link>
+                          <button
+                            type="button"
+                            className="plain-link"
+                            disabled={fileBusy === `download-${doc.id}`}
+                            onClick={async () => {
+                              setFileBusy(`download-${doc.id}`);
+                              try {
+                                await documentApi.downloadFile(doc.id);
+                              } catch (err) {
+                                showToast(err.message, 'error');
+                              } finally {
+                                setFileBusy('');
+                              }
+                            }}
+                          >
+                            {fileBusy === `download-${doc.id}` ? 'Saving…' : 'Download'}
+                          </button>
+                        </>
+                      )}
+                      {can('documents:write') && (
+                        <button type="button" className="plain-link" onClick={() => setEditingDoc(doc)}>
+                          Edit
+                        </button>
+                      )}
+                      {can('documents:write') && (
+                        <button
+                          type="button"
+                          className="link-bad"
+                          disabled={busy}
+                          onClick={() =>
+                            ask({
+                              title: 'Delete document',
+                              message: `Delete “${doc.title}”? This cannot be undone.`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                              onConfirm: () =>
+                                run(async () => {
+                                  await documentApi.remove(doc.id);
+                                }, 'Document deleted'),
+                            })
+                          }
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </article>
+      )}
+
       {tab === 'history' && (
         <article className="panel">
           {history.length === 0 ? (
@@ -447,6 +593,40 @@ export default function EmployeeDetail() {
               }, 'Manager assigned')
             }
             onCancel={() => setModal('')}
+            busy={busy}
+          />
+        </Modal>
+      )}
+
+      {modal === 'document' && (
+        <Modal title="Upload document" onClose={() => setModal('')}>
+          <DocumentForm
+            employees={people}
+            defaultEmployeeId={employee.id}
+            lockEmployee
+            onSubmit={(payload) =>
+              run(async () => {
+                await documentApi.create({ ...payload, employeeId: employee.id });
+                setModal('');
+              }, 'Document uploaded')
+            }
+            onCancel={() => setModal('')}
+            busy={busy}
+          />
+        </Modal>
+      )}
+
+      {editingDoc && (
+        <Modal title="Edit document" onClose={() => setEditingDoc(null)}>
+          <DocumentForm
+            initial={editingDoc}
+            onSubmit={(payload) =>
+              run(async () => {
+                await documentApi.update(editingDoc.id, payload);
+                setEditingDoc(null);
+              }, 'Document updated')
+            }
+            onCancel={() => setEditingDoc(null)}
             busy={busy}
           />
         </Modal>

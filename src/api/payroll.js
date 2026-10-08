@@ -1,4 +1,4 @@
-import { request, withQuery } from './client';
+import { request, requestBlob, withQuery } from './client';
 
 const BASE = '/api/v1/payrolls';
 
@@ -14,5 +14,8 @@ export const payrollApi = {
   },
   markPaid(id) {
     return request(`${BASE}/${id}/pay`, { method: 'PATCH' });
+  },
+  payslip(id) {
+    return requestBlob(`${BASE}/${id}/payslip`);
   },
 };
