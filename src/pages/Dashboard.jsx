@@ -5,6 +5,7 @@ import { dashboardApi } from '../api/dashboard';
 import { documentApi } from '../api/documents';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
+import { Permission } from '../auth/permissions';
 import { useAuth } from '../auth/AuthContext';
 import Avatar from '../components/Avatar';
 import {
@@ -14,7 +15,6 @@ import {
   IconMegaphone,
   IconPay,
   IconPeople,
-  IconStar,
 } from '../components/Icons';
 import { formatDate, formatDateTime, formatFileSize, fullName, prettyEnum, todayLabel } from '../utils/format';
 
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const canViewDocuments = can('documents:view');
+  const canSeeDirectory = can(Permission.EMPLOYEES_DIRECTORY);
+  const canViewPayroll = can('payroll:view');
 
   useEffect(() => {
     let cancelled = false;
@@ -70,38 +72,44 @@ export default function Dashboard() {
   }, [canViewDocuments]);
 
   const peopleById = Object.fromEntries(employees.map((person) => [person.id, person]));
-  const stats = [
-    {
-      label: 'Employees',
-      value: totals?.totalEmployees ?? 0,
-      hint: 'In the directory',
-      icon: IconPeople,
-      to: '/employees',
-    },
-    {
-      label: 'Active',
-      value: totals?.activeEmployees ?? 0,
-      hint: 'Currently employed',
-      icon: IconPeople,
-      to: '/employees',
-    },
-    {
-      label: 'Pending leave',
-      value: totals?.pendingLeaves ?? 0,
-      hint: 'Waiting for a decision',
-      icon: IconLeave,
-      to: '/leaves',
-    },
-    {
-      label: 'Today attendance',
-      value: totals?.todayAttendance ?? 0,
-      hint: 'Checked in today',
-      icon: IconClock,
-      to: '/attendance',
-    },
-  ];
+  const stats = [];
 
-  if (can('payroll:view')) {
+  if (canSeeDirectory) {
+    stats.push(
+      {
+        label: 'Employees',
+        value: totals?.totalEmployees ?? 0,
+        hint: 'In the directory',
+        icon: IconPeople,
+        to: '/employees',
+      },
+      {
+        label: 'Active',
+        value: totals?.activeEmployees ?? 0,
+        hint: 'Currently employed',
+        icon: IconPeople,
+        to: '/employees',
+      },
+    );
+  }
+
+  stats.push({
+    label: 'Pending leave',
+    value: totals?.pendingLeaves ?? pendingLeaves.length,
+    hint: canSeeDirectory ? 'Waiting for a decision' : 'Your open requests',
+    icon: IconLeave,
+    to: '/leaves',
+  });
+
+  stats.push({
+    label: 'Today attendance',
+    value: totals?.todayAttendance ?? 0,
+    hint: 'Checked in today',
+    icon: IconClock,
+    to: '/attendance',
+  });
+
+  if (canViewPayroll) {
     stats.push({
       label: 'Pending payroll',
       value: totals?.pendingPayrolls ?? 0,
@@ -129,11 +137,21 @@ export default function Dashboard() {
           <h2>
             {greeting()}, {user?.username}
           </h2>
-          <p>Live totals for people, leave, attendance, and payroll.</p>
+          <p>
+            {canSeeDirectory
+              ? 'Live totals for people, leave, attendance, and payroll.'
+              : 'Your leave, attendance, and payroll at a glance.'}
+          </p>
         </div>
-        <Link to="/employees" className="button-primary">
-          View employees
-        </Link>
+        {canSeeDirectory ? (
+          <Link to="/employees" className="button-primary">
+            View employees
+          </Link>
+        ) : (
+          <Link to="/leaves" className="button-primary">
+            Request leave
+          </Link>
+        )}
       </header>
 
       {error && <div className="banner banner-error">{error}</div>}
@@ -142,7 +160,7 @@ export default function Dashboard() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Link key={stat.label} to={stat.to} className="stat-card dash-stat">
+            <Link key={stat.label} to={stat.to} className="stat-card">
               <div className="stat-card-top">
                 <p>{stat.label}</p>
                 <span className="stat-icon">
@@ -159,8 +177,8 @@ export default function Dashboard() {
       <div className="dashboard-split">
         <article className="panel">
           <div className="panel-header">
-            <h3>People</h3>
-            <Link to="/employees">See all</Link>
+            <h3>{canSeeDirectory ? 'People' : 'My profile'}</h3>
+            {canSeeDirectory ? <Link to="/employees">See all</Link> : null}
           </div>
           {loading ? (
             <p className="muted">Loading…</p>
@@ -219,108 +237,75 @@ export default function Dashboard() {
         </article>
       </div>
 
-      <div className="shortcut-grid">
-        <Link to="/attendance" className="shortcut">
-          <span className="stat-icon">
-            <IconClock />
-          </span>
-          <span>
-            <strong>Attendance</strong>
-            <em>Check in and review the day</em>
-          </span>
-        </Link>
-        {can('payroll:view') && (
-          <Link to="/payroll" className="shortcut">
-            <span className="stat-icon">
-              <IconPay />
-            </span>
-            <span>
-              <strong>Payroll</strong>
-              <em>Create records and mark paid</em>
-            </span>
-          </Link>
+      <div className="dashboard-split">
+        {canViewDocuments && (
+          <article className="panel">
+            <div className="panel-header">
+              <h3>Recent documents</h3>
+              <Link to="/documents">See all</Link>
+            </div>
+            {loading ? (
+              <p className="muted">Loading…</p>
+            ) : documents.length === 0 ? (
+              <p className="muted">No files uploaded yet.</p>
+            ) : (
+              <ul className="simple-list dash-list">
+                {documents.slice(0, 5).map((doc) => {
+                  const owner = peopleById[doc.employeeId];
+                  return (
+                    <li key={doc.id}>
+                      <Link to={`/documents/${doc.id}`} className="simple-row">
+                        {owner ? (
+                          <Avatar firstName={owner.firstName} lastName={owner.lastName} />
+                        ) : (
+                          <span className="dash-mark">
+                            <IconFile />
+                          </span>
+                        )}
+                        <span>
+                          <strong>{doc.title}</strong>
+                          <em>
+                            {owner ? fullName(owner) : 'Employee'} · {prettyEnum(doc.documentType)}
+                            {doc.hasFile ? ` · ${formatFileSize(doc.fileSize)}` : ''}
+                          </em>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </article>
         )}
-        <Link to="/documents" className="shortcut">
-          <span className="stat-icon">
-            <IconFile />
-          </span>
-          <span>
-            <strong>Documents</strong>
-            <em>Store contracts and files</em>
-          </span>
-        </Link>
-        <Link to="/performance" className="shortcut">
-          <span className="stat-icon">
-            <IconStar />
-          </span>
-          <span>
-            <strong>Performance</strong>
-            <em>Ratings and review notes</em>
-          </span>
-        </Link>
-      </div>
 
-      {canViewDocuments && (
         <article className="panel">
           <div className="panel-header">
-            <h3>Recent documents</h3>
-            <Link to="/documents">See all</Link>
+            <h3>Announcements</h3>
+            <Link to="/announcements">See all</Link>
           </div>
           {loading ? (
             <p className="muted">Loading…</p>
-          ) : documents.length === 0 ? (
-            <p className="muted">No files uploaded yet.</p>
+          ) : announcements.length === 0 ? (
+            <p className="muted">No published announcements yet.</p>
           ) : (
             <ul className="simple-list dash-list">
-              {documents.slice(0, 5).map((doc) => {
-                const owner = peopleById[doc.employeeId];
-                return (
-                  <li key={doc.id}>
-                    <Link to={`/documents/${doc.id}`} className="simple-row">
-                      <span className="stat-icon">
-                        <IconFile />
-                      </span>
-                      <span>
-                        <strong>{doc.title}</strong>
-                        <em>
-                          {owner ? fullName(owner) : 'Employee'} · {prettyEnum(doc.documentType)}
-                          {doc.hasFile ? ` · ${formatFileSize(doc.fileSize)}` : ''}
-                        </em>
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {announcements.slice(0, 4).map((item) => (
+                <li key={item.id}>
+                  <Link to="/announcements" className="simple-row">
+                    <span className="dash-mark">
+                      <IconMegaphone />
+                    </span>
+                    <span>
+                      <strong>{item.title}</strong>
+                      <em>{formatDateTime(item.createdAt)}</em>
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
         </article>
-      )}
-
-      <article className="panel">
-        <div className="panel-header">
-          <h3>Announcements</h3>
-          <Link to="/announcements">See all</Link>
-        </div>
-        {loading ? (
-          <p className="muted">Loading…</p>
-        ) : announcements.length === 0 ? (
-          <p className="muted">No published announcements yet.</p>
-        ) : (
-          <ul className="simple-list dash-news">
-            {announcements.slice(0, 4).map((item) => (
-              <li key={item.id}>
-                <span className="stat-icon">
-                  <IconMegaphone />
-                </span>
-                <span>
-                  <strong>{item.title}</strong>
-                  <em className="table-sub">{formatDateTime(item.createdAt)}</em>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </article>
+      </div>
     </section>
   );
 }

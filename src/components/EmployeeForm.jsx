@@ -104,22 +104,22 @@ export default function EmployeeForm({
       <div className="form-grid">
         <label className="field">
           <span>First name</span>
-          <input name="firstName" value={form.firstName} onChange={updateField} placeholder="Srorn" />
+          <input name="firstName" value={form.firstName} onChange={updateField} />
           {errors.firstName && <small>{errors.firstName}</small>}
         </label>
         <label className="field">
           <span>Last name</span>
-          <input name="lastName" value={form.lastName} onChange={updateField} placeholder="Chansomphors" />
+          <input name="lastName" value={form.lastName} onChange={updateField} />
           {errors.lastName && <small>{errors.lastName}</small>}
         </label>
         <label className="field">
           <span>Email</span>
-          <input name="email" type="email" value={form.email} onChange={updateField} placeholder="name@company.com" />
+          <input name="email" type="email" value={form.email} onChange={updateField} />
           {errors.email && <small>{errors.email}</small>}
         </label>
         <label className="field">
           <span>Phone number</span>
-          <input name="phoneNumber" value={form.phoneNumber} onChange={updateField} placeholder="085123456" />
+          <input name="phoneNumber" value={form.phoneNumber} onChange={updateField} />
           {errors.phoneNumber && <small>{errors.phoneNumber}</small>}
         </label>
         <label className="field">
@@ -129,7 +129,6 @@ export default function EmployeeForm({
             list="position-options"
             value={form.position}
             onChange={updateField}
-            placeholder="Software Engineer"
           />
           <datalist id="position-options">
             {positionOptions.map((position) => (
@@ -145,7 +144,6 @@ export default function EmployeeForm({
             list="department-options"
             value={form.department}
             onChange={updateField}
-            placeholder="Information technology"
           />
           <datalist id="department-options">
             {departmentOptions.map((department) => (

@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { documentApi } from '../api/documents';
 import { employeeApi } from '../api/employees';
 import { useConfirm } from '../components/ConfirmDialog';
+import Avatar from '../components/Avatar';
 import DocumentForm from '../components/DocumentForm';
 import Modal from '../components/Modal';
-import { IconPlus } from '../components/Icons';
+import { IconFile, IconPlus } from '../components/Icons';
+import Select from '../components/Select';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDateTime, formatFileSize, fullName, peopleMap, prettyEnum } from '../utils/format';
@@ -126,20 +128,32 @@ export default function Documents() {
         )}
       </header>
 
-      <div className="filter-bar">
-        <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((person) => (
-            <option key={person.id} value={person.id}>
-              {fullName(person)}
-            </option>
-          ))}
-        </select>
+      <div className="stat-grid">
+        <article className="stat-card">
+          <div className="stat-card-top">
+            <p>Files</p>
+            <span className="stat-icon">
+              <IconFile />
+            </span>
+          </div>
+          <strong>{documents.length}</strong>
+        </article>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
+        <div className="table-toolbar">
+          <Select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+            <option value="">All employees</option>
+            {employees.map((person) => (
+              <option key={person.id} value={person.id}>
+                {fullName(person)}
+              </option>
+            ))}
+          </Select>
+        </div>
+
         {loading ? (
           <p className="muted padded">Loading documents…</p>
         ) : documents.length === 0 ? (
@@ -171,8 +185,11 @@ export default function Documents() {
                     </td>
                     <td data-label="Employee">
                       {person ? (
-                        <Link to={`/employees/${person.id}`} className="plain-link">
-                          {fullName(person)}
+                        <Link to={`/employees/${person.id}`} className="name-link">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                          </span>
                         </Link>
                       ) : (
                         doc.employeeId
@@ -186,7 +203,9 @@ export default function Documents() {
                         ? `${doc.originalFileName || 'File'} · ${formatFileSize(doc.fileSize)}`
                         : 'No file'}
                     </td>
-                    <td data-label="Uploaded">{formatDateTime(doc.uploadedAt)}</td>
+                    <td className="date-cell" data-label="Uploaded">
+                      {formatDateTime(doc.uploadedAt)}
+                    </td>
                     <td className="table-actions" data-label="Action">
                       {doc.hasFile && (
                         <>

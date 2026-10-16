@@ -18,6 +18,24 @@ export const employeeApi = {
   getDepartments() {
     return request(`${BASE_URL}/departments`);
   },
+  getDepartmentById(id) {
+    return request(`${BASE_URL}/departments/${id}`);
+  },
+  createDepartment(payload) {
+    return request(`${BASE_URL}/departments`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateDepartment(id, payload) {
+    return request(`${BASE_URL}/departments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  removeDepartment(id) {
+    return request(`${BASE_URL}/departments/${id}`, { method: 'DELETE' });
+  },
   getPositions() {
     return request(`${BASE_URL}/positions`);
   },

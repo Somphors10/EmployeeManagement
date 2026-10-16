@@ -1,10 +1,10 @@
 const AVATAR_TONES = [
-  { bg: '#dbeafe', fg: '#1d4ed8' },
-  { bg: '#e0f2fe', fg: '#0369a1' },
-  { bg: '#e0e7ff', fg: '#3730a3' },
-  { bg: '#cffafe', fg: '#0e7490' },
-  { bg: '#f1f5f9', fg: '#334155' },
-  { bg: '#dbe4ff', fg: '#1e3a8a' },
+  { bg: '#1e40af', fg: '#ffffff' },
+  { bg: '#1e3a8a', fg: '#ffffff' },
+  { bg: '#1d4ed8', fg: '#ffffff' },
+  { bg: '#1e40af', fg: '#ffffff' },
+  { bg: '#172554', fg: '#ffffff' },
+  { bg: '#1e3a8a', fg: '#ffffff' },
 ];
 
 export function formatDate(value, options = { year: 'numeric', month: 'short', day: 'numeric' }) {

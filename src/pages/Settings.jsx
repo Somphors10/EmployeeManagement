@@ -66,6 +66,13 @@ export default function Settings() {
 
       {error && <div className="banner banner-error">{error}</div>}
 
+      <div className="stat-grid">
+        <article className="stat-card">
+          <p>Settings</p>
+          <strong>{settings.length}</strong>
+        </article>
+      </div>
+
       <div className="table-card">
         {loading ? (
           <p className="muted padded">Loading settings…</p>

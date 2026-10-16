@@ -3,7 +3,7 @@ import { announcementApi } from '../api/announcements';
 import AnnouncementForm from '../components/AnnouncementForm';
 import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
-import { IconPlus } from '../components/Icons';
+import { IconMegaphone, IconPlus } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDateTime } from '../utils/format';
@@ -76,6 +76,26 @@ export default function Announcements() {
           </button>
         )}
       </header>
+
+      <div className="stat-grid">
+        <article className="stat-card">
+          <div className="stat-card-top">
+            <p>Total</p>
+            <span className="stat-icon">
+              <IconMegaphone />
+            </span>
+          </div>
+          <strong>{items.length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Published</p>
+          <strong>{items.filter((item) => item.published).length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Drafts</p>
+          <strong>{items.filter((item) => !item.published).length}</strong>
+        </article>
+      </div>
 
       {error && <div className="banner banner-error">{error}</div>}
       {loading && <p className="muted padded">Loading announcements…</p>}

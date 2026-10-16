@@ -9,8 +9,8 @@ import EmployeeForm from '../components/EmployeeForm';
 import LeaveForm from '../components/LeaveForm';
 import ManagerForm from '../components/ManagerForm';
 import { useConfirm } from '../components/ConfirmDialog';
-import { IconCalendar, IconMail, IconPeople, IconPhone } from '../components/Icons';
 import Modal from '../components/Modal';
+import { employeePath } from '../auth/permissions';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import TransferForm from '../components/TransferForm';
@@ -20,7 +20,7 @@ export default function EmployeeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const { ask, dialog } = useConfirm();
   const [tab, setTab] = useState('overview');
   const [employee, setEmployee] = useState(null);
@@ -61,7 +61,7 @@ export default function EmployeeDetail() {
         await Promise.all(requests);
       setEmployee(person.payload);
       setPeople(allPeople.payload || []);
-      setDepartments(depts.payload || []);
+      setDepartments([...(depts.payload || [])].sort((a, b) => String(a).localeCompare(String(b))));
       setPositions(roles.payload || []);
       setSubordinates(reports.payload || []);
       setHistory(events.payload || []);
@@ -105,8 +105,8 @@ export default function EmployeeDetail() {
     return (
       <section className="page">
         <div className="banner banner-error">{error || 'Employee not found'}</div>
-        <Link to="/employees" className="plain-link">
-          Back to employees
+        <Link to={can('employees:directory') ? '/employees' : '/'} className="plain-link">
+          {can('employees:directory') ? 'Back to employees' : 'Back to dashboard'}
         </Link>
       </section>
     );
@@ -118,23 +118,22 @@ export default function EmployeeDetail() {
 
   return (
     <section className="page profile-page">
-      <Link to="/employees" className="back-link">
-        ← Employees
+      <Link to={can('employees:directory') ? '/employees' : '/'} className="back-link">
+        {can('employees:directory') ? '← Employees' : '← Dashboard'}
       </Link>
 
-      <header className="profile-hero">
-        <div className="profile-hero-main">
+      <header className="page-header profile-page-header">
+        <div className="profile-head">
           <Avatar firstName={employee.firstName} lastName={employee.lastName} size="lg" />
-          <div className="profile-head-copy">
+          <div>
             <h2>{fullName(employee)}</h2>
-            <p>
+            <p className="page-copy">
               {employee.position} · {employee.department}
             </p>
             <div className="profile-chips">
               <span className={`status-badge ${inactive ? 'inactive' : 'active'}`}>
                 {prettyEnum(employee.status)}
               </span>
-              <span className="profile-chip">{employee.department}</span>
               <span className="profile-chip">Hired {formatDate(employee.hireDate)}</span>
             </div>
           </div>
@@ -180,6 +179,27 @@ export default function EmployeeDetail() {
         )}
       </header>
 
+      <div className="stat-grid">
+        <article className="stat-card">
+          <p>Direct reports</p>
+          <strong>{subordinates.length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Pending leave</p>
+          <strong>{pendingLeaveCount}</strong>
+        </article>
+        {can('documents:view') && (
+          <article className="stat-card">
+            <p>Documents</p>
+            <strong>{documents.length}</strong>
+          </article>
+        )}
+        <article className="stat-card">
+          <p>History</p>
+          <strong>{history.length}</strong>
+        </article>
+      </div>
+
       <div className="tabs">
         {[
           ['overview', 'Overview'],
@@ -202,109 +222,55 @@ export default function EmployeeDetail() {
       </div>
 
       {tab === 'overview' && (
-        <div className="profile-overview">
-          <div className="profile-facts">
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconMail />
-              </span>
-              <div>
-                <p>Email</p>
-                <strong>{employee.email}</strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconPhone />
-              </span>
-              <div>
-                <p>Phone</p>
-                <strong>{employee.phoneNumber || '—'}</strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconCalendar />
-              </span>
-              <div>
-                <p>Hire date</p>
-                <strong>{formatDate(employee.hireDate, { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconPeople />
-              </span>
-              <div>
-                <p>Manager</p>
-                <strong>
-                  {manager ? (
-                    <Link to={`/employees/${manager.id}`} className="plain-link">
+        <div className="table-card">
+          <dl className="info-list profile-info">
+            <div>
+              <dt>Email</dt>
+              <dd>{employee.email}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{employee.phoneNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>Hire date</dt>
+              <dd>{formatDate(employee.hireDate, { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
+            </div>
+            <div>
+              <dt>Manager</dt>
+              <dd>
+                {manager ? (
+                  employeePath(user, manager.id) ? (
+                    <Link to={employeePath(user, manager.id)} className="plain-link">
                       {fullName(manager)}
                     </Link>
                   ) : (
-                    'Not assigned'
-                  )}
-                </strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconCalendar />
-              </span>
-              <div>
-                <p>Date of birth</p>
-                <strong>{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : '—'}</strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconPeople />
-              </span>
-              <div>
-                <p>National ID</p>
-                <strong>{employee.nationalId || '—'}</strong>
-              </div>
-            </article>
-            <article className="profile-fact">
-              <span className="stat-icon">
-                <IconMail />
-              </span>
-              <div>
-                <p>Address</p>
-                <strong>{employee.address || '—'}</strong>
-              </div>
-            </article>
+                    fullName(manager)
+                  )
+                ) : (
+                  'Not assigned'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Date of birth</dt>
+              <dd>{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : '—'}</dd>
+            </div>
+            <div>
+              <dt>National ID</dt>
+              <dd>{employee.nationalId || '—'}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{employee.address || '—'}</dd>
+            </div>
             {can('payroll:view') && (
-              <article className="profile-fact">
-                <span className="stat-icon">
-                  <IconPhone />
-                </span>
-                <div>
-                  <p>Salary</p>
-                  <strong>{employee.salary != null ? formatMoney(employee.salary) : '—'}</strong>
-                </div>
-              </article>
+              <div>
+                <dt>Salary</dt>
+                <dd>{employee.salary != null ? formatMoney(employee.salary) : '—'}</dd>
+              </div>
             )}
-          </div>
-
-          <aside className="profile-side">
-            <article className="stat-card">
-              <p>Direct reports</p>
-              <strong>{subordinates.length}</strong>
-              <em>People on this team</em>
-            </article>
-            <article className="stat-card">
-              <p>Pending leave</p>
-              <strong>{pendingLeaveCount}</strong>
-              <em>Requests waiting review</em>
-            </article>
-            <article className="stat-card">
-              <p>History</p>
-              <strong>{history.length}</strong>
-              <em>Recorded activity events</em>
-            </article>
-          </aside>
+          </dl>
         </div>
       )}
 
@@ -345,13 +311,23 @@ export default function EmployeeDetail() {
                 </div>
               </div>
               {manager ? (
-                <Link to={`/employees/${manager.id}`} className="simple-row">
-                  <Avatar firstName={manager.firstName} lastName={manager.lastName} />
-                  <span>
-                    <strong>{fullName(manager)}</strong>
-                    <em>{manager.position}</em>
-                  </span>
-                </Link>
+                employeePath(user, manager.id) ? (
+                  <Link to={employeePath(user, manager.id)} className="simple-row">
+                    <Avatar firstName={manager.firstName} lastName={manager.lastName} />
+                    <span>
+                      <strong>{fullName(manager)}</strong>
+                      <em>{manager.position}</em>
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="simple-row">
+                    <Avatar firstName={manager.firstName} lastName={manager.lastName} />
+                    <span>
+                      <strong>{fullName(manager)}</strong>
+                      <em>{manager.position}</em>
+                    </span>
+                  </div>
+                )
               ) : (
                 <p className="muted">No manager assigned.</p>
               )}
@@ -366,13 +342,23 @@ export default function EmployeeDetail() {
                 <ul className="simple-list">
                   {subordinates.map((person) => (
                     <li key={person.id}>
-                      <Link to={`/employees/${person.id}`} className="simple-row">
-                        <Avatar firstName={person.firstName} lastName={person.lastName} />
-                        <span>
-                          <strong>{fullName(person)}</strong>
-                          <em>{person.position}</em>
-                        </span>
-                      </Link>
+                      {employeePath(user, person.id) ? (
+                        <Link to={employeePath(user, person.id)} className="simple-row">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                            <em>{person.position}</em>
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="simple-row">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                            <em>{person.position}</em>
+                          </span>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -667,7 +653,7 @@ export default function EmployeeDetail() {
                 try {
                   await employeeApi.remove(id);
                   showToast('Employee deleted');
-                  navigate('/employees');
+                  navigate(can('employees:directory') ? '/employees' : '/');
                 } catch (err) {
                   showToast(err.message, 'error');
                   setBusy(false);

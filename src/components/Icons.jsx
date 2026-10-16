@@ -235,11 +235,69 @@ export function IconEye() {
   );
 }
 
+export function IconBuilding() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.5 20.5h15" strokeLinecap="round" />
+      <path d="M6 20.5V7.5l6-3 6 3v13" />
+      <path d="M9.5 10h1M13.5 10h1M9.5 13.5h1M13.5 13.5h1M9.5 17h1M13.5 17h1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconOvertime() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l2.5 1.5" strokeLinecap="round" />
+      <path d="M18.5 5.5v3h3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconHoliday() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path d="M3.5 10h17M8 3.5v3M16 3.5v3" strokeLinecap="round" />
+      <path d="M12 13.2l.7 1.5 1.6.2-1.2 1.1.3 1.6L12 16.8l-1.4.8.3-1.6-1.2-1.1 1.6-.2.7-1.5Z" />
+    </svg>
+  );
+}
+
+export function IconChart() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 19.5h16" strokeLinecap="round" />
+      <rect x="6" y="11" width="3" height="6" rx="1" />
+      <rect x="10.5" y="7" width="3" height="10" rx="1" />
+      <rect x="15" y="9.5" width="3" height="7.5" rx="1" />
+    </svg>
+  );
+}
+
 export function IconEyeOff() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 5l16 14M9.5 9.6A3.2 3.2 0 0 0 12 15.2M14.6 14.2A3.2 3.2 0 0 0 9.9 9.4" />
       <path d="M6.2 7.6C4.3 9 3 12 3 12s3.5 6.5 9 6.5c1.6 0 3-.3 4.3-.9M17.8 16.2C19.6 14.8 21 12 21 12s-3.5-6.5-9-6.5c-.8 0-1.6.1-2.3.3" />
+    </svg>
+  );
+}
+
+export function IconChevron() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconBell() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9a6 6 0 0 1 12 0c0 7 2 7 2 9H4c0-2 2-2 2-9Z" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
     </svg>
   );
 }

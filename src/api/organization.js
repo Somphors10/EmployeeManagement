@@ -1,21 +1,21 @@
 import { request } from './client';
 
-const BASE = '/api/v1/organization/departments';
+const ORG_BASE = '/api/v1/organization/departments';
 
 export const organizationApi = {
   getAll() {
-    return request(BASE);
+    return request(ORG_BASE);
   },
   getById(id) {
-    return request(`${BASE}/${id}`);
+    return request(`${ORG_BASE}/${id}`);
   },
   create(payload) {
-    return request(BASE, { method: 'POST', body: JSON.stringify(payload) });
+    return request(ORG_BASE, { method: 'POST', body: JSON.stringify(payload) });
   },
   update(id, payload) {
-    return request(`${BASE}/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    return request(`${ORG_BASE}/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   },
   remove(id) {
-    return request(`${BASE}/${id}`, { method: 'DELETE' });
+    return request(`${ORG_BASE}/${id}`, { method: 'DELETE' });
   },
 };

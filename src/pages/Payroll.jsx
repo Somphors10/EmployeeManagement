@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { payrollApi } from '../api/payroll';
-import { useConfirm } from '../components/ConfirmDialog';
-import Modal from '../components/Modal';
-import PayrollForm from '../components/PayrollForm';
-import { IconPlus } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
+import Avatar from '../components/Avatar';
+import { useConfirm } from '../components/ConfirmDialog';
+import { IconCheck, IconClock, IconPay, IconPlus } from '../components/Icons';
+import Modal from '../components/Modal';
+import Select from '../components/Select';
+import PayrollForm from '../components/PayrollForm';
 import { useToast } from '../components/Toast';
 import { formatDate, formatMoney, fullName, peopleMap, prettyEnum } from '../utils/format';
 
@@ -24,9 +26,9 @@ export default function Payroll() {
   const [busy, setBusy] = useState(false);
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
-  const pendingAmount = records
-    .filter((row) => row.status === 'PENDING')
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const pendingRecords = records.filter((row) => row.status === 'PENDING');
+  const paidRecords = records.filter((row) => row.status === 'PAID');
+  const pendingAmount = pendingRecords.reduce((sum, row) => sum + Number(row.netAmount || row.amount || 0), 0);
 
   async function load() {
     setLoading(true);
@@ -70,6 +72,12 @@ export default function Payroll() {
   async function markPaid(id) {
     setBusy(true);
     try {
+      const latest = await payrollApi.getById(id);
+      if (latest.payload?.status === 'PAID') {
+        showToast('This payroll is already paid', 'error');
+        await load();
+        return;
+      }
       await payrollApi.markPaid(id);
       showToast('Marked as paid');
       await load();
@@ -77,6 +85,24 @@ export default function Payroll() {
       showToast(err.message, 'error');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function downloadPayslip(id) {
+    try {
+      const { blob, fileName } = await payrollApi.payslip(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.download = fileName || 'payslip.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      showToast(err.message, 'error');
     }
   }
 
@@ -96,42 +122,62 @@ export default function Payroll() {
 
       <div className="stat-grid">
         <article className="stat-card">
-          <p>Records</p>
+          <div className="stat-card-top">
+            <p>Records</p>
+            <span className="stat-icon">
+              <IconPay />
+            </span>
+          </div>
           <strong>{records.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Pending</p>
-          <strong>{records.filter((row) => row.status === 'PENDING').length}</strong>
+          <div className="stat-card-top">
+            <p>Pending</p>
+            <span className="stat-icon">
+              <IconClock />
+            </span>
+          </div>
+          <strong>{pendingRecords.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Paid</p>
-          <strong>{records.filter((row) => row.status === 'PAID').length}</strong>
+          <div className="stat-card-top">
+            <p>Paid</p>
+            <span className="stat-icon">
+              <IconCheck />
+            </span>
+          </div>
+          <strong>{paidRecords.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Pending amount</p>
+          <div className="stat-card-top">
+            <p>Pending amount</p>
+            <span className="stat-icon">
+              <IconPay />
+            </span>
+          </div>
           <strong>{formatMoney(pendingAmount)}</strong>
         </article>
-      </div>
-
-      <div className="filter-bar">
-        <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((person) => (
-            <option key={person.id} value={person.id}>
-              {fullName(person)}
-            </option>
-          ))}
-        </select>
-        <select value={status} onChange={(event) => setStatus(event.target.value)}>
-          <option value="">All statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="PAID">Paid</option>
-        </select>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
+        <div className="table-toolbar">
+          <Select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+            <option value="">All employees</option>
+            {employees.map((person) => (
+              <option key={person.id} value={person.id}>
+                {fullName(person)}
+              </option>
+            ))}
+          </Select>
+          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="PAID">Paid</option>
+          </Select>
+        </div>
+
         {loading ? (
           <p className="muted padded">Loading payroll…</p>
         ) : records.length === 0 ? (
@@ -157,44 +203,30 @@ export default function Payroll() {
                   <tr key={row.id}>
                     <td data-label="Employee">
                       {person ? (
-                        <Link to={`/employees/${person.id}`} className="plain-link">
-                          {fullName(person)}
+                        <Link to={`/employees/${person.id}`} className="name-link">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                            <em>{person.position || person.department || 'Employee'}</em>
+                          </span>
                         </Link>
                       ) : (
                         row.employeeId
                       )}
                     </td>
-                    <td data-label="Period">
+                    <td className="date-cell" data-label="Period">
                       {formatDate(row.periodStart)} – {formatDate(row.periodEnd)}
                     </td>
-                    <td data-label="Net pay">{formatMoney(row.netAmount || row.amount)}</td>
+                    <td className="money-cell" data-label="Net pay">
+                      {formatMoney(row.netAmount || row.amount)}
+                    </td>
                     <td data-label="Status">
                       <span className={`status-badge ${String(row.status || '').toLowerCase()}`}>
                         {prettyEnum(row.status)}
                       </span>
                     </td>
                     <td className="table-actions" data-label="Action">
-                      <button
-                        type="button"
-                        className="plain-link"
-                        onClick={async () => {
-                          try {
-                            const { blob, fileName } = await payrollApi.payslip(row.id);
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.href = url;
-                            link.target = '_blank';
-                            link.rel = 'noreferrer';
-                            link.download = fileName || 'payslip.pdf';
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            setTimeout(() => URL.revokeObjectURL(url), 60_000);
-                          } catch (err) {
-                            showToast(err.message, 'error');
-                          }
-                        }}
-                      >
+                      <button type="button" className="plain-link" onClick={() => downloadPayslip(row.id)}>
                         Payslip
                       </button>
                       {row.status === 'PENDING' && can('payroll:write') && (

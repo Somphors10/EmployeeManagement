@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fullName } from '../utils/format';
+import Select from './Select';
 
 export default function DepartmentForm({ employees = [], initial, onSubmit, onCancel, busy }) {
   const [form, setForm] = useState({
@@ -33,28 +34,23 @@ export default function DepartmentForm({ employees = [], initial, onSubmit, onCa
       <div className="form-grid">
         <label className="field">
           <span>Department name</span>
-          <input name="name" value={form.name} onChange={updateField} placeholder="Engineering" />
+          <input name="name" value={form.name} onChange={updateField} />
           {errors.name && <small>{errors.name}</small>}
         </label>
         <label className="field">
           <span>Manager</span>
-          <select name="managerId" value={form.managerId} onChange={updateField}>
+          <Select name="managerId" value={form.managerId} onChange={updateField}>
             <option value="">No manager</option>
             {employees.map((person) => (
               <option key={person.id} value={person.id}>
                 {fullName(person)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="field field-wide">
           <span>Description</span>
-          <input
-            name="description"
-            value={form.description}
-            onChange={updateField}
-            placeholder="What this department owns"
-          />
+          <input name="description" value={form.description} onChange={updateField} />
         </label>
       </div>
       <div className="form-actions">

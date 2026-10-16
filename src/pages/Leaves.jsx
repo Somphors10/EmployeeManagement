@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import { leaveApi } from '../api/leaves';
 import { useConfirm } from '../components/ConfirmDialog';
+import Avatar from '../components/Avatar';
 import LeaveForm from '../components/LeaveForm';
 import Modal from '../components/Modal';
-import { IconPlus } from '../components/Icons';
+import { IconLeave, IconPlus } from '../components/Icons';
+import { canDecideFor } from '../auth/permissions';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, prettyEnum } from '../utils/format';
@@ -69,6 +71,12 @@ export default function Leaves() {
   async function decide(id, action) {
     setBusy(true);
     try {
+      const latest = await leaveApi.getById(id);
+      if (latest.payload?.status && latest.payload.status !== 'PENDING') {
+        showToast('This leave is no longer pending', 'error');
+        await load();
+        return;
+      }
       if (action === 'approve') await leaveApi.approve(id);
       else await leaveApi.reject(id);
       showToast(action === 'approve' ? 'Leave approved' : 'Leave rejected');
@@ -95,6 +103,24 @@ export default function Leaves() {
         )}
       </header>
 
+      <div className="stat-grid">
+        <article className="stat-card">
+          <div className="stat-card-top">
+            <p>Shown</p>
+            <span className="stat-icon">
+              <IconLeave />
+            </span>
+          </div>
+          <strong>{leaves.length}</strong>
+        </article>
+        {balances.slice(0, 3).map((item) => (
+          <article className="stat-card" key={item.type}>
+            <p>{prettyEnum(item.type)}</p>
+            <strong>{item.remaining}</strong>
+          </article>
+        ))}
+      </div>
+
       <div className="tabs">
         {[
           ['PENDING', 'Pending'],
@@ -113,16 +139,6 @@ export default function Leaves() {
           </button>
         ))}
       </div>
-
-      {balances.length > 0 && (
-        <div className="filter-bar">
-          {balances.map((item) => (
-            <span key={item.type} className="status-badge">
-              {prettyEnum(item.type)}: {item.remaining} left ({item.used} used)
-            </span>
-          ))}
-        </div>
-      )}
 
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -153,15 +169,18 @@ export default function Leaves() {
                   <tr key={leave.id}>
                     <td data-label="Employee">
                       {person ? (
-                        <Link to={`/employees/${person.id}`} className="plain-link">
-                          {fullName(person)}
+                        <Link to={`/employees/${person.id}`} className="name-link">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                          </span>
                         </Link>
                       ) : (
                         'Unknown'
                       )}
                     </td>
                     <td data-label="Type">{prettyEnum(leave.type)}</td>
-                    <td data-label="Dates">
+                    <td className="date-cell" data-label="Dates">
                       {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
                     </td>
                     <td className="reason-cell" data-label="Reason">
@@ -195,7 +214,9 @@ export default function Leaves() {
                           Cancel
                         </button>
                       )}
-                      {leave.status === 'PENDING' && can('leaves:decide') && (
+                      {leave.status === 'PENDING' &&
+                        can('leaves:decide') &&
+                        canDecideFor(user, leave.employeeId, peopleById) && (
                         <>
                           <button
                             type="button"

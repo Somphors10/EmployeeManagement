@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fullName } from '../utils/format';
+import Select from './Select';
 
 export default function PayrollForm({ employees = [], onSubmit, onCancel, busy }) {
   const [form, setForm] = useState({
@@ -47,14 +48,14 @@ export default function PayrollForm({ employees = [], onSubmit, onCancel, busy }
       <div className="form-grid">
         <label className="field field-wide">
           <span>Employee</span>
-          <select name="employeeId" value={form.employeeId} onChange={updateField}>
+          <Select name="employeeId" value={form.employeeId} onChange={updateField}>
             <option value="">Select an employee</option>
             {employees.map((person) => (
               <option key={person.id} value={person.id}>
                 {fullName(person)}
               </option>
             ))}
-          </select>
+          </Select>
           {errors.employeeId && <small>{errors.employeeId}</small>}
         </label>
         <label className="field">

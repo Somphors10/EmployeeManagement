@@ -38,7 +38,6 @@ export default function TransferForm({
             list="transfer-departments"
             value={department}
             onChange={(event) => setDepartment(event.target.value)}
-            placeholder="Information technology"
           />
           <datalist id="transfer-departments">
             {departments.map((name) => (
@@ -53,7 +52,6 @@ export default function TransferForm({
             list="transfer-positions"
             value={position}
             onChange={(event) => setPosition(event.target.value)}
-            placeholder="Software Engineer"
           />
           <datalist id="transfer-positions">
             {positions.map((name) => (

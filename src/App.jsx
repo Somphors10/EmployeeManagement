@@ -15,12 +15,14 @@ import Forbidden from './pages/Forbidden';
 import Leaves from './pages/Leaves';
 import Login from './pages/Login';
 import Holidays from './pages/Holidays';
+import Notifications from './pages/Notifications';
 import Organization from './pages/Organization';
 import Overtime from './pages/Overtime';
 import Payroll from './pages/Payroll';
 import Performance from './pages/Performance';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
+import Roles from './pages/Roles';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 
@@ -49,7 +51,7 @@ export default function App() {
               <Route
                 path="/employees"
                 element={
-                  <RequirePermission permission={Permission.EMPLOYEES_VIEW}>
+                  <RequirePermission permission={Permission.EMPLOYEES_DIRECTORY}>
                     <Employees />
                   </RequirePermission>
                 }
@@ -119,6 +121,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/departments"
+                element={
+                  <RequirePermission permission={Permission.ORGANIZATION_VIEW}>
+                    <Organization />
+                  </RequirePermission>
+                }
+              />
+              <Route
                 path="/overtime"
                 element={
                   <RequirePermission permission={Permission.OVERTIME_VIEW}>
@@ -150,7 +160,23 @@ export default function App() {
                   </RequirePermission>
                 }
               />
+              <Route
+                path="/roles"
+                element={
+                  <RequirePermission permission={Permission.ROLES_VIEW}>
+                    <Roles />
+                  </RequirePermission>
+                }
+              />
               <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/notifications"
+                element={
+                  <RequirePermission permission={Permission.NOTIFICATIONS_VIEW}>
+                    <Notifications />
+                  </RequirePermission>
+                }
+              />
               <Route
                 path="/announcements"
                 element={

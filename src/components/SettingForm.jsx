@@ -35,14 +35,13 @@ export default function SettingForm({ initial, onSubmit, onCancel, busy }) {
             name="key"
             value={form.key}
             onChange={updateField}
-            placeholder="company.name"
             disabled={Boolean(initial)}
           />
           {errors.key && <small>{errors.key}</small>}
         </label>
         <label className="field">
           <span>Value</span>
-          <input name="value" value={form.value} onChange={updateField} placeholder="Employee Hub" />
+          <input name="value" value={form.value} onChange={updateField} />
           {errors.value && <small>{errors.value}</small>}
         </label>
       </div>

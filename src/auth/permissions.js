@@ -1,6 +1,7 @@
 export const Permission = {
   DASHBOARD_VIEW: 'dashboard:view',
   EMPLOYEES_VIEW: 'employees:view',
+  EMPLOYEES_DIRECTORY: 'employees:directory',
   EMPLOYEES_WRITE: 'employees:write',
   LEAVES_VIEW: 'leaves:view',
   LEAVES_CREATE: 'leaves:create',
@@ -20,6 +21,7 @@ export const Permission = {
   SETTINGS_VIEW: 'settings:view',
   SETTINGS_WRITE: 'settings:write',
   USERS_WRITE: 'users:write',
+  ROLES_VIEW: 'roles:view',
   HOLIDAYS_VIEW: 'holidays:view',
   HOLIDAYS_WRITE: 'holidays:write',
   OVERTIME_VIEW: 'overtime:view',
@@ -31,18 +33,20 @@ export const Permission = {
 
 export const NAV = [
   { key: 'dashboard', label: 'Dashboard', path: '/', permission: Permission.DASHBOARD_VIEW },
-  { key: 'employees', label: 'Employees', path: '/employees', permission: Permission.EMPLOYEES_VIEW },
+  { key: 'employees', label: 'Employees', path: '/employees', permission: Permission.EMPLOYEES_DIRECTORY },
   { key: 'leaves', label: 'Leaves', path: '/leaves', permission: Permission.LEAVES_VIEW },
   { key: 'attendance', label: 'Attendance', path: '/attendance', permission: Permission.ATTENDANCE_VIEW },
   { key: 'payroll', label: 'Payroll', path: '/payroll', permission: Permission.PAYROLL_VIEW },
   { key: 'documents', label: 'Documents', path: '/documents', permission: Permission.DOCUMENTS_VIEW },
   { key: 'performance', label: 'Performance', path: '/performance', permission: Permission.PERFORMANCE_VIEW },
-  { key: 'organization', label: 'Organization', path: '/organization', permission: Permission.ORGANIZATION_VIEW },
+  { key: 'organization', label: 'Departments', path: '/organization', permission: Permission.ORGANIZATION_VIEW },
   { key: 'overtime', label: 'Overtime', path: '/overtime', permission: Permission.OVERTIME_VIEW },
   { key: 'holidays', label: 'Holidays', path: '/holidays', permission: Permission.HOLIDAYS_VIEW },
   { key: 'announcements', label: 'Announcements', path: '/announcements', permission: Permission.ANNOUNCEMENTS_VIEW },
+  { key: 'notifications', label: 'Notifications', path: '/notifications', permission: Permission.NOTIFICATIONS_VIEW },
   { key: 'reports', label: 'Reports', path: '/reports', permission: Permission.REPORTS_VIEW },
   { key: 'users', label: 'Users', path: '/users', permission: Permission.USERS_WRITE },
+  { key: 'roles', label: 'Roles', path: '/roles', permission: Permission.ROLES_VIEW },
   { key: 'settings', label: 'Settings', path: '/settings', permission: Permission.SETTINGS_VIEW },
 ];
 
@@ -66,12 +70,17 @@ const EMPLOYEE = [
   Permission.NOTIFICATIONS_VIEW,
 ];
 
-const MANAGER = [...EMPLOYEE, Permission.LEAVES_DECIDE, Permission.PERFORMANCE_WRITE, Permission.OVERTIME_DECIDE];
+const MANAGER = [
+  ...EMPLOYEE,
+  Permission.EMPLOYEES_DIRECTORY,
+  Permission.LEAVES_DECIDE,
+  Permission.PERFORMANCE_WRITE,
+  Permission.OVERTIME_DECIDE,
+];
 
 const HR = [
   ...MANAGER,
   Permission.EMPLOYEES_WRITE,
-  Permission.PAYROLL_VIEW,
   Permission.PAYROLL_WRITE,
   Permission.DOCUMENTS_WRITE,
   Permission.ORGANIZATION_WRITE,
@@ -79,6 +88,7 @@ const HR = [
   Permission.SETTINGS_VIEW,
   Permission.HOLIDAYS_WRITE,
   Permission.REPORTS_VIEW,
+  Permission.ROLES_VIEW,
 ];
 
 const ADMIN = [...HR, Permission.SETTINGS_WRITE, Permission.USERS_WRITE];
@@ -91,8 +101,23 @@ export function permissionsForRole(role) {
 
 export function can(user, permission) {
   if (!user || !permission) return false;
-  if (Array.isArray(user.permissions)) {
+  if (Array.isArray(user.permissions) && user.permissions.length > 0) {
     return user.permissions.includes(permission);
   }
   return permissionsForRole(user.role).includes(permission);
+}
+
+export function canDecideFor(user, employeeId, peopleById = {}) {
+  if (!user || !employeeId) return false;
+  if (can(user, Permission.EMPLOYEES_WRITE)) return true;
+  if (!user.employeeId || employeeId === user.employeeId) return false;
+  return peopleById[employeeId]?.managerId === user.employeeId;
+}
+
+export function employeePath(user, employeeId) {
+  if (!employeeId) return null;
+  if (can(user, Permission.EMPLOYEES_DIRECTORY) || user?.employeeId === employeeId) {
+    return `/employees/${employeeId}`;
+  }
+  return null;
 }

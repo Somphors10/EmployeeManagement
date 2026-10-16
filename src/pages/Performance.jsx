@@ -4,8 +4,10 @@ import { employeeApi } from '../api/employees';
 import { performanceApi } from '../api/performance';
 import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
+import Avatar from '../components/Avatar';
 import ReviewForm from '../components/ReviewForm';
-import { IconPlus } from '../components/Icons';
+import { IconPlus, IconStar } from '../components/Icons';
+import Select from '../components/Select';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, peopleMap } from '../utils/format';
@@ -109,29 +111,39 @@ export default function Performance() {
 
       <div className="stat-grid">
         <article className="stat-card">
-          <p>Reviews</p>
+          <div className="stat-card-top">
+            <p>Reviews</p>
+            <span className="stat-icon">
+              <IconStar />
+            </span>
+          </div>
           <strong>{reviews.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Average rating</p>
+          <div className="stat-card-top">
+            <p>Average rating</p>
+            <span className="stat-icon">
+              <IconStar />
+            </span>
+          </div>
           <strong>{reviews.length ? average.toFixed(1) : '—'}</strong>
         </article>
-      </div>
-
-      <div className="filter-bar">
-        <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((person) => (
-            <option key={person.id} value={person.id}>
-              {fullName(person)}
-            </option>
-          ))}
-        </select>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
+        <div className="table-toolbar">
+          <Select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+            <option value="">All employees</option>
+            {employees.map((person) => (
+              <option key={person.id} value={person.id}>
+                {fullName(person)}
+              </option>
+            ))}
+          </Select>
+        </div>
+
         {loading ? (
           <p className="muted padded">Loading reviews…</p>
         ) : reviews.length === 0 ? (
@@ -158,8 +170,11 @@ export default function Performance() {
                   <tr key={review.id}>
                     <td data-label="Employee">
                       {person ? (
-                        <Link to={`/employees/${person.id}`} className="plain-link">
-                          {fullName(person)}
+                        <Link to={`/employees/${person.id}`} className="name-link">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                          </span>
                         </Link>
                       ) : (
                         review.employeeId
@@ -167,7 +182,9 @@ export default function Performance() {
                     </td>
                     <td data-label="Reviewer">{review.reviewer}</td>
                     <td data-label="Rating">{review.rating} / 5</td>
-                    <td data-label="Date">{formatDate(review.reviewDate)}</td>
+                    <td className="date-cell" data-label="Date">
+                      {formatDate(review.reviewDate)}
+                    </td>
                     <td data-label="Comments">{review.comments}</td>
                     <td className="table-actions" data-label="Action">
                       {can('performance:write') && (

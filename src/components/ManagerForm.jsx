@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fullName } from '../utils/format';
+import Select from './Select';
 
 export default function ManagerForm({ employee, people = [], onSubmit, onCancel, busy }) {
   const [managerId, setManagerId] = useState(employee?.managerId || '');
@@ -21,14 +22,14 @@ export default function ManagerForm({ employee, people = [], onSubmit, onCancel,
       <p className="confirm-copy">Assign who {employee?.firstName} reports to.</p>
       <label className="field" style={{ marginTop: 16 }}>
         <span>Manager</span>
-        <select value={managerId} onChange={(event) => setManagerId(event.target.value)}>
+        <Select value={managerId} onChange={(event) => setManagerId(event.target.value)}>
           <option value="">Select a manager</option>
           {options.map((person) => (
             <option key={person.id} value={person.id}>
               {fullName(person)} · {person.position}
             </option>
           ))}
-        </select>
+        </Select>
         {error && <small>{error}</small>}
       </label>
       <div className="form-actions">

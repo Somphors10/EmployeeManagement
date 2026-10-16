@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { employeeApi } from '../api/employees';
 import Avatar from '../components/Avatar';
 import EmployeeForm from '../components/EmployeeForm';
 import { IconPlus, IconSearch } from '../components/Icons';
 import Modal from '../components/Modal';
+import Select from '../components/Select';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, fullName, prettyEnum } from '../utils/format';
 
 export default function Employees() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const { can } = useAuth();
   const [employees, setEmployees] = useState([]);
@@ -37,7 +39,7 @@ export default function Employees() {
         employeeApi.getPositions(),
         employeeApi.getSummary(),
       ]);
-      setDepartments(deptRes.payload || []);
+      setDepartments([...(deptRes.payload || [])].sort((a, b) => String(a).localeCompare(String(b))));
       setPositions(posRes.payload || []);
       setSummary(summaryRes.payload);
     } catch {
@@ -95,7 +97,9 @@ export default function Employees() {
         <div>
           <h2>Employees</h2>
           <p className="page-copy">
-            {loading ? 'Loading…' : `${employees.length} people`} · click a row to open the profile
+            {loading
+              ? 'Loading…'
+              : `${summary?.totalEmployees ?? employees.length} people · ${summary?.activeEmployees ?? '—'} active`}
           </p>
         </div>
         {can('employees:write') && (
@@ -106,52 +110,32 @@ export default function Employees() {
         )}
       </header>
 
-      <div className="stat-grid">
-        <article className="stat-card">
-          <p>Total</p>
-          <strong>{summary?.totalEmployees ?? employees.length}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Active</p>
-          <strong>{summary?.activeEmployees ?? '—'}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Inactive</p>
-          <strong>{summary?.inactiveEmployees ?? '—'}</strong>
-        </article>
-        <article className="stat-card">
-          <p>Departments</p>
-          <strong>{summary?.byDepartment?.length ?? departments.length}</strong>
-        </article>
-      </div>
-
-      <div className="filter-bar">
-        <label className="search-field">
-          <IconSearch />
-          <input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search name or email"
-          />
-        </label>
-        <select value={status} onChange={(event) => setStatus(event.target.value)}>
-          <option value="">All status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
-        <select value={department} onChange={(event) => setDepartment(event.target.value)}>
-          <option value="">All departments</option>
-          {departments.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
+        <div className="table-toolbar">
+          <label className="search-field">
+            <IconSearch />
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search name or email"
+            />
+          </label>
+          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </Select>
+          <Select value={department} onChange={(event) => setDepartment(event.target.value)}>
+            <option value="">All departments</option>
+            {departments.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </div>
         {loading ? (
           <p className="muted padded">Loading employees…</p>
         ) : employees.length === 0 ? (
@@ -172,9 +156,13 @@ export default function Employees() {
             </thead>
             <tbody>
               {employees.map((employee) => (
-                <tr key={employee.id}>
+                <tr
+                  key={employee.id}
+                  className="is-link-row"
+                  onClick={() => navigate(`/employees/${employee.id}`)}
+                >
                   <td data-label="Name">
-                    <Link to={`/employees/${employee.id}`} className="name-link">
+                    <Link to={`/employees/${employee.id}`} className="name-link" onClick={(event) => event.stopPropagation()}>
                       <Avatar firstName={employee.firstName} lastName={employee.lastName} />
                       <span>
                         <strong>{fullName(employee)}</strong>

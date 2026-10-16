@@ -33,17 +33,12 @@ export default function AnnouncementForm({ initial, onSubmit, onCancel, busy }) 
       <div className="form-grid">
         <label className="field field-wide">
           <span>Title</span>
-          <input name="title" value={form.title} onChange={updateField} placeholder="Office closed Friday" />
+          <input name="title" value={form.title} onChange={updateField} />
           {errors.title && <small>{errors.title}</small>}
         </label>
         <label className="field field-wide">
           <span>Content</span>
-          <input
-            name="content"
-            value={form.content}
-            onChange={updateField}
-            placeholder="Share the update the team should see."
-          />
+          <input name="content" value={form.content} onChange={updateField} />
           {errors.content && <small>{errors.content}</small>}
         </label>
         <label className="field field-wide checkbox-field">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fullName, todayISO } from '../utils/format';
+import Select from './Select';
 
 function toForm(initial) {
   return {
@@ -50,30 +51,30 @@ export default function ReviewForm({ employees = [], initial, onSubmit, onCancel
       <div className="form-grid">
         <label className="field field-wide">
           <span>Employee</span>
-          <select name="employeeId" value={form.employeeId} onChange={updateField}>
+          <Select name="employeeId" value={form.employeeId} onChange={updateField}>
             <option value="">Select an employee</option>
             {employees.map((person) => (
               <option key={person.id} value={person.id}>
                 {fullName(person)}
               </option>
             ))}
-          </select>
+          </Select>
           {errors.employeeId && <small>{errors.employeeId}</small>}
         </label>
         <label className="field">
           <span>Reviewer</span>
-          <input name="reviewer" value={form.reviewer} onChange={updateField} placeholder="Alex Chen" />
+          <input name="reviewer" value={form.reviewer} onChange={updateField} />
           {errors.reviewer && <small>{errors.reviewer}</small>}
         </label>
         <label className="field">
           <span>Rating</span>
-          <select name="rating" value={form.rating} onChange={updateField}>
+          <Select name="rating" value={form.rating} onChange={updateField}>
             {[1, 2, 3, 4, 5].map((score) => (
               <option key={score} value={score}>
                 {score} / 5
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="field">
           <span>Review date</span>
@@ -82,12 +83,7 @@ export default function ReviewForm({ employees = [], initial, onSubmit, onCancel
         </label>
         <label className="field field-wide">
           <span>Comments</span>
-          <input
-            name="comments"
-            value={form.comments}
-            onChange={updateField}
-            placeholder="Strong delivery this quarter, keep growing the team."
-          />
+          <input name="comments" value={form.comments} onChange={updateField} />
           {errors.comments && <small>{errors.comments}</small>}
         </label>
       </div>

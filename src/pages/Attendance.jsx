@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { attendanceApi } from '../api/attendance';
 import { employeeApi } from '../api/employees';
 import { useConfirm } from '../components/ConfirmDialog';
+import Avatar from '../components/Avatar';
 import Modal from '../components/Modal';
-import { IconPlus } from '../components/Icons';
+import { IconClock, IconPlus } from '../components/Icons';
+import Select from '../components/Select';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDate, formatTime, fullName, peopleMap, prettyEnum, todayISO } from '../utils/format';
@@ -43,6 +45,7 @@ export default function Attendance() {
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
   const todayRecords = records.filter((row) => row.workDate === todayISO());
+  const canPickEmployee = can('employees:directory');
 
   async function load() {
     setLoading(true);
@@ -71,14 +74,15 @@ export default function Attendance() {
   }, [employeeId, from, to]);
 
   async function punch(action) {
-    if (!selectedEmployee) {
-      showToast('Select an employee first', 'error');
+    const target = canPickEmployee ? selectedEmployee : user?.employeeId;
+    if (!target) {
+      showToast(canPickEmployee ? 'Select an employee first' : 'Your account is not linked to an employee', 'error');
       return;
     }
     setBusy(true);
     try {
-      if (action === 'in') await attendanceApi.checkIn(selectedEmployee);
-      else await attendanceApi.checkOut(selectedEmployee);
+      if (action === 'in') await attendanceApi.checkIn(target);
+      else await attendanceApi.checkOut(target);
       showToast(action === 'in' ? 'Checked in' : 'Checked out');
       setChecking(false);
       setSelectedEmployee('');
@@ -149,59 +153,81 @@ export default function Attendance() {
 
       <div className="stat-grid">
         <article className="stat-card">
-          <p>Records shown</p>
+          <div className="stat-card-top">
+            <p>Records shown</p>
+            <span className="stat-icon">
+              <IconClock />
+            </span>
+          </div>
           <strong>{records.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Today</p>
+          <div className="stat-card-top">
+            <p>Today</p>
+            <span className="stat-icon">
+              <IconClock />
+            </span>
+          </div>
           <strong>{todayRecords.length}</strong>
         </article>
         <article className="stat-card">
-          <p>Still in</p>
+          <div className="stat-card-top">
+            <p>Still in</p>
+            <span className="stat-icon">
+              <IconClock />
+            </span>
+          </div>
           <strong>{todayRecords.filter((row) => row.checkIn && !row.checkOut).length}</strong>
         </article>
         <article className="stat-card">
-          <p>Late</p>
+          <div className="stat-card-top">
+            <p>Late</p>
+            <span className="stat-icon">
+              <IconClock />
+            </span>
+          </div>
           <strong>{records.filter((row) => row.status === 'LATE').length}</strong>
         </article>
-      </div>
-
-      <div className="filter-bar">
-        <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((person) => (
-            <option key={person.id} value={person.id}>
-              {fullName(person)}
-            </option>
-          ))}
-        </select>
-        <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-        <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-        <button
-          type="button"
-          className="button-ghost"
-          onClick={() => {
-            setFrom(monthStartISO());
-            setTo(todayISO());
-          }}
-        >
-          This month
-        </button>
-        <button
-          type="button"
-          className="button-ghost"
-          onClick={() => {
-            setFrom('');
-            setTo('');
-          }}
-        >
-          All dates
-        </button>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
+        <div className="table-toolbar">
+          {canPickEmployee && (
+            <Select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+              <option value="">All employees</option>
+              {employees.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {fullName(person)}
+                </option>
+              ))}
+            </Select>
+          )}
+          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+          <button
+            type="button"
+            className="button-ghost"
+            onClick={() => {
+              setFrom(monthStartISO());
+              setTo(todayISO());
+            }}
+          >
+            This month
+          </button>
+          <button
+            type="button"
+            className="button-ghost"
+            onClick={() => {
+              setFrom('');
+              setTo('');
+            }}
+          >
+            All dates
+          </button>
+        </div>
+
         {loading ? (
           <p className="muted padded">Loading attendance…</p>
         ) : records.length === 0 ? (
@@ -229,14 +255,19 @@ export default function Attendance() {
                   <tr key={row.id}>
                     <td data-label="Employee">
                       {person ? (
-                        <Link to={`/employees/${person.id}`} className="plain-link">
-                          {fullName(person)}
+                        <Link to={`/employees/${person.id}`} className="name-link">
+                          <Avatar firstName={person.firstName} lastName={person.lastName} />
+                          <span>
+                            <strong>{fullName(person)}</strong>
+                          </span>
                         </Link>
                       ) : (
                         row.employeeId
                       )}
                     </td>
-                    <td data-label="Date">{formatDate(row.workDate)}</td>
+                    <td className="date-cell" data-label="Date">
+                      {formatDate(row.workDate)}
+                    </td>
                     <td data-label="Check in">{formatTime(row.checkIn)}</td>
                     <td data-label="Check out">{formatTime(row.checkOut)}</td>
                     <td data-label="OT hours">{row.overtimeHours ?? '—'}</td>
@@ -264,17 +295,21 @@ export default function Attendance() {
         <Modal title="Check in or out" onClose={() => setChecking(false)}>
           <form className="employee-form" onSubmit={(event) => event.preventDefault()}>
             <div className="form-grid">
-              <label className="field field-wide">
-                <span>Employee</span>
-                <select value={selectedEmployee} onChange={(event) => setSelectedEmployee(event.target.value)}>
-                  <option value="">Select an employee</option>
-                  {employees.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {fullName(person)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {canPickEmployee ? (
+                <label className="field field-wide">
+                  <span>Employee</span>
+                  <Select value={selectedEmployee} onChange={(event) => setSelectedEmployee(event.target.value)}>
+                    <option value="">Select an employee</option>
+                    {employees.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {fullName(person)}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              ) : (
+                <p className="muted field-wide">Check in or out for your own attendance.</p>
+              )}
             </div>
             <div className="form-actions">
               <button type="button" className="button-ghost" onClick={() => setChecking(false)} disabled={busy}>
@@ -285,11 +320,12 @@ export default function Attendance() {
                 className="button-ghost"
                 disabled={busy}
                 onClick={() => {
-                  if (!selectedEmployee) {
-                    showToast('Select an employee first', 'error');
+                  const target = canPickEmployee ? selectedEmployee : user?.employeeId;
+                  if (!target) {
+                    showToast(canPickEmployee ? 'Select an employee first' : 'Your account is not linked to an employee', 'error');
                     return;
                   }
-                  const person = peopleById[selectedEmployee];
+                  const person = peopleById[target];
                   ask({
                     title: 'Check out',
                     message: `Check out ${person ? fullName(person) : 'this employee'}?`,
@@ -305,11 +341,12 @@ export default function Attendance() {
                 className="button-primary"
                 disabled={busy}
                 onClick={() => {
-                  if (!selectedEmployee) {
-                    showToast('Select an employee first', 'error');
+                  const target = canPickEmployee ? selectedEmployee : user?.employeeId;
+                  if (!target) {
+                    showToast(canPickEmployee ? 'Select an employee first' : 'Your account is not linked to an employee', 'error');
                     return;
                   }
-                  const person = peopleById[selectedEmployee];
+                  const person = peopleById[target];
                   ask({
                     title: 'Check in',
                     message: `Check in ${person ? fullName(person) : 'this employee'}?`,
@@ -347,7 +384,7 @@ export default function Attendance() {
               </label>
               <label className="field">
                 <span>Status</span>
-                <select
+                <Select
                   value={correction.status}
                   onChange={(event) => setCorrection((current) => ({ ...current, status: event.target.value }))}
                 >
@@ -356,7 +393,7 @@ export default function Attendance() {
                       {prettyEnum(status)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="field">
                 <span>Overtime hours</span>

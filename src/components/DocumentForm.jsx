@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fullName, prettyEnum } from '../utils/format';
+import Select from './Select';
 
 const DOCUMENT_TYPES = ['CONTRACT', 'ID_CARD', 'CERTIFICATE', 'OTHER'];
 const ACCEPTED_TYPES = '.pdf,.png,.jpg,.jpeg,.doc,.docx,.webp';
@@ -58,31 +59,31 @@ export default function DocumentForm({
         {!isEdit && !lockEmployee && (
           <label className="field field-wide">
             <span>Employee</span>
-            <select name="employeeId" value={form.employeeId} onChange={updateField}>
+            <Select name="employeeId" value={form.employeeId} onChange={updateField}>
               <option value="">Select an employee</option>
               {employees.map((person) => (
                 <option key={person.id} value={person.id}>
                   {fullName(person)}
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.employeeId && <small>{errors.employeeId}</small>}
           </label>
         )}
         <label className="field">
           <span>Title</span>
-          <input name="title" value={form.title} onChange={updateField} placeholder="Employment contract" />
+          <input name="title" value={form.title} onChange={updateField} />
           {errors.title && <small>{errors.title}</small>}
         </label>
         <label className="field">
           <span>Type</span>
-          <select name="documentType" value={form.documentType} onChange={updateField}>
+          <Select name="documentType" value={form.documentType} onChange={updateField}>
             {DOCUMENT_TYPES.map((type) => (
               <option key={type} value={type}>
                 {prettyEnum(type)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="field field-wide">
           <span>{isEdit ? 'Replace file (optional)' : 'File'}</span>

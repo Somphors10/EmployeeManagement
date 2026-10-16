@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fullName } from '../utils/format';
+import Select from './Select';
 
 const LEAVE_TYPES = ['ANNUAL', 'SICK', 'UNPAID'];
 
@@ -46,25 +47,25 @@ export default function LeaveForm({ employees = [], defaultEmployeeId = '', onSu
       <div className="form-grid">
         <label className="field field-wide">
           <span>Employee</span>
-          <select name="employeeId" value={form.employeeId} onChange={updateField} disabled={Boolean(defaultEmployeeId)}>
+          <Select name="employeeId" value={form.employeeId} onChange={updateField} disabled={Boolean(defaultEmployeeId)}>
             <option value="">Select an employee</option>
             {employees.map((person) => (
               <option key={person.id} value={person.id}>
                 {fullName(person)}
               </option>
             ))}
-          </select>
+          </Select>
           {errors.employeeId && <small>{errors.employeeId}</small>}
         </label>
         <label className="field">
           <span>Leave type</span>
-          <select name="type" value={form.type} onChange={updateField}>
+          <Select name="type" value={form.type} onChange={updateField}>
             {LEAVE_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type[0] + type.slice(1).toLowerCase()}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="field">
           <span>Start date</span>
@@ -78,12 +79,7 @@ export default function LeaveForm({ employees = [], defaultEmployeeId = '', onSu
         </label>
         <label className="field field-wide">
           <span>Reason</span>
-          <input
-            name="reason"
-            value={form.reason}
-            onChange={updateField}
-            placeholder="Family trip, recovery, personal time…"
-          />
+          <input name="reason" value={form.reason} onChange={updateField} />
           {errors.reason && <small>{errors.reason}</small>}
         </label>
       </div>
