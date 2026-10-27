@@ -96,11 +96,7 @@ export default function Employees() {
       <header className="page-header">
         <div>
           <h2>Employees</h2>
-          <p className="page-copy">
-            {loading
-              ? 'Loading…'
-              : `${summary?.totalEmployees ?? employees.length} people · ${summary?.activeEmployees ?? '—'} active`}
-          </p>
+          <p className="page-copy">Search, add, and manage people in the workspace.</p>
         </div>
         {can('employees:write') && (
           <button type="button" className="button-primary" onClick={() => setCreating(true)}>
@@ -109,6 +105,38 @@ export default function Employees() {
           </button>
         )}
       </header>
+
+      <div className="stat-grid">
+        <article className="stat-card">
+          <p>People</p>
+          <strong>{summary?.totalEmployees ?? employees.length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Active</p>
+          <strong>{summary?.activeEmployees ?? '—'}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Shown</p>
+          <strong>{employees.length}</strong>
+        </article>
+      </div>
+
+      <div className="tabs">
+        {[
+          ['', 'All'],
+          ['ACTIVE', 'Active'],
+          ['INACTIVE', 'Inactive'],
+        ].map(([value, label]) => (
+          <button
+            key={label}
+            type="button"
+            className={`tab ${status === value ? 'active' : ''}`}
+            onClick={() => setStatus(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -122,11 +150,6 @@ export default function Employees() {
               placeholder="Search name or email"
             />
           </label>
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">All status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-          </Select>
           <Select value={department} onChange={(event) => setDepartment(event.target.value)}>
             <option value="">All departments</option>
             {departments.map((name) => (

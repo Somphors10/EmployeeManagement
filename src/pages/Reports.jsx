@@ -1,15 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { reportApi } from '../api/reports';
-import {
-  IconChart,
-  IconClock,
-  IconFile,
-  IconLeave,
-  IconOvertime,
-  IconPay,
-  IconPeople,
-  IconStar,
-} from '../components/Icons';
+import { IconFile } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { formatDate, formatMoney, prettyEnum, todayISO } from '../utils/format';
 
@@ -38,53 +29,59 @@ function daysAgo(days) {
   return date.toISOString().slice(0, 10);
 }
 
-function Breakdown({ title, rows = [], money = false }) {
-  const max = Math.max(1, ...rows.map((row) => Number(row.count || 0)));
+function Stat({ label, value }) {
   return (
-    <article className="panel">
-      <div className="panel-header">
-        <h3>{title}</h3>
-      </div>
-      {rows.length === 0 ? (
-        <p className="muted">No data in this period.</p>
-      ) : (
-        <ul className="report-bars">
-          {rows.map((row) => (
-            <li key={row.name} className="report-bar">
-              <span>{prettyEnum(row.name)}</span>
-              <span className="report-bar-track">
-                <span
-                  className="report-bar-fill"
-                  style={{ width: `${Math.round((Number(row.count || 0) / max) * 100)}%` }}
-                />
-              </span>
-              <strong>
-                {money ? formatMoney(row.amount) : row.count}
-                {row.percent != null ? <em> {row.percent}%</em> : null}
-              </strong>
-            </li>
-          ))}
-        </ul>
-      )}
+    <article className="stat-card">
+      <p>{label}</p>
+      <strong>{value ?? '—'}</strong>
     </article>
   );
 }
 
-function StatCard({ label, value, hint, Icon }) {
+function ReportTable({ title, columns, rows, empty = 'No data in this period.' }) {
   return (
-    <article className="stat-card">
-      <div className="stat-card-top">
-        <p>{label}</p>
-        {Icon ? (
-          <span className="stat-icon">
-            <Icon />
-          </span>
-        ) : null}
-      </div>
-      <strong>{value ?? '—'}</strong>
-      {hint ? <em>{hint}</em> : null}
-    </article>
+    <div className="table-card">
+      {title ? (
+        <div className="table-toolbar">
+          <strong>{title}</strong>
+        </div>
+      ) : null}
+      <table className="data-table">
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column.key}>{column.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length}>{empty}</td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id || row.name || columns.map((column) => row[column.key]).join('-')}>
+                {columns.map((column) => (
+                  <td key={column.key} data-label={column.label}>
+                    {row[column.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
   );
+}
+
+function breakdownRows(rows = [], { money = false } = {}) {
+  return rows.map((row) => ({
+    name: prettyEnum(row.name),
+    count: money ? formatMoney(row.amount ?? row.count) : row.count ?? '—',
+    share: row.percent != null ? `${row.percent}%` : '—',
+  }));
 }
 
 export default function Reports() {
@@ -144,16 +141,21 @@ export default function Reports() {
   const payroll = summary?.payroll || {};
   const overtime = summary?.overtime || {};
   const performance = summary?.performance || {};
+  const shareColumns = [
+    { key: 'name', label: 'Name' },
+    { key: 'count', label: 'Count' },
+    { key: 'share', label: 'Share' },
+  ];
 
   return (
-    <section className="page">
+    <section className="page reports-page">
       <header className="page-header">
         <div>
           <h2>Reports</h2>
           <p className="page-copy">
             {loading
-              ? 'Loading HR analytics…'
-              : `Headcount, time, payroll, and performance · ${formatDate(summary?.from)} – ${formatDate(summary?.to)}`}
+              ? 'Loading report…'
+              : `Totals for ${formatDate(summary?.from || from)} – ${formatDate(summary?.to || to)}.`}
           </p>
         </div>
         {activeTab.exportType ? (
@@ -174,13 +176,34 @@ export default function Reports() {
       <div className="filter-bar">
         <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
         <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-        <button type="button" className="button-ghost" onClick={() => { setFrom(monthStart()); setTo(todayISO()); }}>
+        <button
+          type="button"
+          className="button-ghost"
+          onClick={() => {
+            setFrom(monthStart());
+            setTo(todayISO());
+          }}
+        >
           This month
         </button>
-        <button type="button" className="button-ghost" onClick={() => { setFrom(daysAgo(30)); setTo(todayISO()); }}>
+        <button
+          type="button"
+          className="button-ghost"
+          onClick={() => {
+            setFrom(daysAgo(30));
+            setTo(todayISO());
+          }}
+        >
           Last 30 days
         </button>
-        <button type="button" className="button-ghost" onClick={() => { setFrom(yearStart()); setTo(todayISO()); }}>
+        <button
+          type="button"
+          className="button-ghost"
+          onClick={() => {
+            setFrom(yearStart());
+            setTo(todayISO());
+          }}
+        >
           This year
         </button>
       </div>
@@ -201,81 +224,66 @@ export default function Reports() {
       {tab === 'overview' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Employees" value={summary?.employees} hint={`${people.active ?? 0} active`} Icon={IconPeople} />
-            <StatCard label="Pending leave" value={summary?.pendingLeaves} hint={`${leaves.approvedDays ?? 0} approved days`} Icon={IconLeave} />
-            <StatCard label="Today attendance" value={summary?.todayAttendance} hint={`${attendance.records ?? 0} records in range`} Icon={IconClock} />
-            <StatCard label="Pending payroll" value={summary?.pendingPayrolls} hint={formatMoney(payroll.pendingAmount)} Icon={IconPay} />
-            <StatCard label="Pending overtime" value={summary?.pendingOvertimes} hint={`${overtime.approvedHours ?? 0} hrs approved`} Icon={IconOvertime} />
-            <StatCard label="Avg rating" value={performance.averageRating || '—'} hint={`${performance.reviews ?? 0} reviews`} Icon={IconStar} />
+            <Stat label="Employees" value={summary?.employees} />
+            <Stat label="Pending leave" value={summary?.pendingLeaves} />
+            <Stat label="Attendance today" value={summary?.todayAttendance} />
+            <Stat label="Pending payroll" value={summary?.pendingPayrolls} />
+            <Stat label="Pending overtime" value={summary?.pendingOvertimes} />
+            <Stat label="Avg rating" value={performance.averageRating || '—'} />
           </div>
-          <div className="dashboard-split">
-            <Breakdown title="Headcount by department" rows={people.byDepartment} />
-            <Breakdown title="Leave by type" rows={leaves.byType} />
-          </div>
-          <div className="dashboard-split">
-            <Breakdown title="Attendance mix" rows={attendance.byStatus} />
-            <Breakdown title="Payroll status" rows={payroll.byStatus} />
-          </div>
+          <ReportTable
+            title="Summary"
+            columns={[
+              { key: 'name', label: 'Area' },
+              { key: 'count', label: 'Total' },
+              { key: 'note', label: 'Detail' },
+            ]}
+            rows={[
+              { name: 'People', count: people.total ?? summary?.employees ?? '—', note: `${people.active ?? 0} active` },
+              { name: 'Leave', count: leaves.total ?? '—', note: `${leaves.pending ?? 0} pending · ${leaves.approvedDays ?? 0} approved days` },
+              { name: 'Attendance', count: attendance.records ?? '—', note: `${attendance.present ?? 0} present · ${attendance.late ?? 0} late` },
+              { name: 'Payroll', count: payroll.records ?? '—', note: `${formatMoney(payroll.pendingAmount)} pending` },
+              { name: 'Overtime', count: overtime.records ?? '—', note: `${overtime.approvedHours ?? 0} hrs approved` },
+              { name: 'Performance', count: performance.reviews ?? '—', note: `Avg ${performance.averageRating || '—'}` },
+            ]}
+          />
         </>
       )}
 
       {tab === 'people' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Total" value={people.total} Icon={IconPeople} />
-            <StatCard label="Active" value={people.active} />
-            <StatCard label="Inactive" value={people.inactive} />
-            <StatCard label="New hires" value={people.newHires} hint="Hired in this period" />
+            <Stat label="Total" value={people.total} />
+            <Stat label="Active" value={people.active} />
+            <Stat label="Inactive" value={people.inactive} />
+            <Stat label="New hires" value={people.newHires} />
           </div>
-          <div className="dashboard-split">
-            <Breakdown title="By department" rows={people.byDepartment} />
-            <Breakdown title="By position" rows={people.byPosition} />
+          <div className="stack">
+            <ReportTable
+              title="By department"
+              columns={shareColumns}
+              rows={breakdownRows(people.byDepartment)}
+            />
+            <ReportTable
+              title="By position"
+              columns={shareColumns}
+              rows={breakdownRows(people.byPosition)}
+            />
           </div>
-          <article className="panel">
-            <div className="panel-header">
-              <h3>Department table</h3>
-            </div>
-            <div className="table-card">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>People</th>
-                    <th>Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(people.byDepartment || []).length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>No departments yet.</td>
-                    </tr>
-                  ) : (
-                    people.byDepartment.map((row) => (
-                      <tr key={row.name}>
-                        <td data-label="Department">{row.name}</td>
-                        <td data-label="People">{row.count}</td>
-                        <td data-label="Share">{row.percent}%</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </article>
         </>
       )}
 
       {tab === 'leaves' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Requests" value={leaves.total} Icon={IconLeave} />
-            <StatCard label="Pending" value={leaves.pending} />
-            <StatCard label="Approved" value={leaves.approved} />
-            <StatCard label="Approved days" value={leaves.approvedDays} />
+            <Stat label="Requests" value={leaves.total} />
+            <Stat label="Pending" value={leaves.pending} />
+            <Stat label="Approved" value={leaves.approved} />
+            <Stat label="Approved days" value={leaves.approvedDays} />
           </div>
-          <div className="dashboard-split">
-            <Breakdown title="By type" rows={leaves.byType} />
-            <Breakdown title="By status" rows={leaves.byStatus} />
+          <div className="stack">
+            <ReportTable title="By type" columns={shareColumns} rows={breakdownRows(leaves.byType)} />
+            <ReportTable title="By status" columns={shareColumns} rows={breakdownRows(leaves.byStatus)} />
           </div>
         </>
       )}
@@ -283,46 +291,54 @@ export default function Reports() {
       {tab === 'attendance' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Records" value={attendance.records} Icon={IconClock} />
-            <StatCard label="Present" value={attendance.present} />
-            <StatCard label="Late" value={attendance.late} />
-            <StatCard label="Absent" value={attendance.absent} />
+            <Stat label="Records" value={attendance.records} />
+            <Stat label="Present" value={attendance.present} />
+            <Stat label="Late" value={attendance.late} />
+            <Stat label="Absent" value={attendance.absent} />
           </div>
-          <Breakdown title="Attendance status" rows={attendance.byStatus} />
+          <ReportTable title="By status" columns={shareColumns} rows={breakdownRows(attendance.byStatus)} />
         </>
       )}
 
       {tab === 'payroll' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Records" value={payroll.records} Icon={IconPay} />
-            <StatCard label="Pending" value={payroll.pending} hint={formatMoney(payroll.pendingAmount)} />
-            <StatCard label="Paid" value={payroll.paid} hint={formatMoney(payroll.paidAmount)} />
-            <StatCard label="Total net" value={formatMoney(payroll.totalAmount)} />
+            <Stat label="Records" value={payroll.records} />
+            <Stat label="Pending" value={payroll.pending} />
+            <Stat label="Paid" value={payroll.paid} />
+            <Stat label="Total net" value={formatMoney(payroll.totalAmount)} />
           </div>
-          <Breakdown title="Payroll status" rows={payroll.byStatus} />
+          <ReportTable
+            title="By status"
+            columns={[
+              { key: 'name', label: 'Status' },
+              { key: 'count', label: 'Records' },
+              { key: 'share', label: 'Share' },
+            ]}
+            rows={breakdownRows(payroll.byStatus, { money: false })}
+          />
         </>
       )}
 
       {tab === 'overtime' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Requests" value={overtime.records} Icon={IconOvertime} />
-            <StatCard label="Pending hours" value={overtime.pendingHours} />
-            <StatCard label="Approved hours" value={overtime.approvedHours} />
-            <StatCard label="Rejected" value={overtime.rejected} />
+            <Stat label="Requests" value={overtime.records} />
+            <Stat label="Pending hours" value={overtime.pendingHours} />
+            <Stat label="Approved hours" value={overtime.approvedHours} />
+            <Stat label="Rejected" value={overtime.rejected} />
           </div>
-          <Breakdown title="Overtime status" rows={overtime.byStatus} />
+          <ReportTable title="By status" columns={shareColumns} rows={breakdownRows(overtime.byStatus)} />
         </>
       )}
 
       {tab === 'performance' && (
         <>
           <div className="stat-grid">
-            <StatCard label="Reviews" value={performance.reviews} Icon={IconStar} />
-            <StatCard label="Average rating" value={performance.averageRating || '—'} Icon={IconChart} />
+            <Stat label="Reviews" value={performance.reviews} />
+            <Stat label="Average rating" value={performance.averageRating || '—'} />
           </div>
-          <Breakdown title="Ratings" rows={performance.byRating} />
+          <ReportTable title="By rating" columns={shareColumns} rows={breakdownRows(performance.byRating)} />
         </>
       )}
     </section>

@@ -137,10 +137,10 @@ export default function Overtime() {
 
       <div className="tabs">
         {[
+          ['', 'All'],
           ['PENDING', 'Pending'],
           ['APPROVED', 'Approved'],
           ['REJECTED', 'Rejected'],
-          ['', 'All'],
         ].map(([value, label]) => (
           <button
             key={label}

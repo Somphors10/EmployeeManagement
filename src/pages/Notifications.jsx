@@ -49,9 +49,24 @@ export default function Notifications() {
       <header className="page-header">
         <div>
           <h2>Notifications</h2>
-          <p className="page-copy">{loading ? 'Loading…' : `${notes.length} total · ${unread} unread`}</p>
+          <p className="page-copy">Alerts for leave, documents, and other workspace events.</p>
         </div>
       </header>
+
+      <div className="stat-grid">
+        <article className="stat-card">
+          <p>Total</p>
+          <strong>{notes.length}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Unread</p>
+          <strong>{unread}</strong>
+        </article>
+        <article className="stat-card">
+          <p>Shown</p>
+          <strong>{shown.length}</strong>
+        </article>
+      </div>
 
       <div className="tabs">
         <button type="button" className={`tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
@@ -62,7 +77,7 @@ export default function Notifications() {
           className={`tab ${filter === 'unread' ? 'active' : ''}`}
           onClick={() => setFilter('unread')}
         >
-          Unread {unread > 0 ? unread : ''}
+          Unread
         </button>
       </div>
 

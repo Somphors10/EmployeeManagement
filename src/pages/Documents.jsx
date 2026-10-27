@@ -19,6 +19,7 @@ export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -27,6 +28,13 @@ export default function Documents() {
   const [fileBusy, setFileBusy] = useState('');
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
+  const types = useMemo(
+    () => [...new Set(documents.map((doc) => doc.documentType).filter(Boolean))],
+    [documents],
+  );
+  const visible = typeFilter
+    ? documents.filter((doc) => doc.documentType === typeFilter)
+    : documents;
 
   async function load() {
     setLoading(true);
@@ -46,6 +54,7 @@ export default function Documents() {
   }
 
   useEffect(() => {
+    setTypeFilter('');
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
@@ -140,6 +149,26 @@ export default function Documents() {
         </article>
       </div>
 
+      <div className="tabs">
+        <button
+          type="button"
+          className={`tab ${typeFilter === '' ? 'active' : ''}`}
+          onClick={() => setTypeFilter('')}
+        >
+          All
+        </button>
+        {types.map((type) => (
+          <button
+            key={type}
+            type="button"
+            className={`tab ${typeFilter === type ? 'active' : ''}`}
+            onClick={() => setTypeFilter(type)}
+          >
+            {prettyEnum(type)}
+          </button>
+        ))}
+      </div>
+
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
@@ -156,10 +185,14 @@ export default function Documents() {
 
         {loading ? (
           <p className="muted padded">Loading documents…</p>
-        ) : documents.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="empty-state">
-            <h3>No documents yet</h3>
-            <p>Upload a PDF, image, or Word file for an employee.</p>
+            <h3>{documents.length === 0 ? 'No documents yet' : 'No documents in this filter'}</h3>
+            <p>
+              {documents.length === 0
+                ? 'Upload a PDF, image, or Word file for an employee.'
+                : 'Try another tab or change the employee filter.'}
+            </p>
           </div>
         ) : (
           <table className="data-table">
@@ -174,7 +207,7 @@ export default function Documents() {
               </tr>
             </thead>
             <tbody>
-              {documents.map((doc) => {
+              {visible.map((doc) => {
                 const person = peopleById[doc.employeeId];
                 return (
                   <tr key={doc.id}>

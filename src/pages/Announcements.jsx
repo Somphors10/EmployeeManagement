@@ -3,16 +3,26 @@ import { announcementApi } from '../api/announcements';
 import AnnouncementForm from '../components/AnnouncementForm';
 import { useConfirm } from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
-import { IconMegaphone, IconPlus } from '../components/Icons';
+import { IconPlus } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatDateTime } from '../utils/format';
+
+function dateParts(value) {
+  if (!value) return { day: '—', month: '' };
+  const date = new Date(value);
+  return {
+    day: String(date.getDate()).padStart(2, '0'),
+    month: date.toLocaleDateString(undefined, { month: 'short' }),
+  };
+}
 
 export default function Announcements() {
   const { showToast } = useToast();
   const { can } = useAuth();
   const { ask, dialog } = useConfirm();
   const [items, setItems] = useState([]);
+  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
@@ -63,8 +73,16 @@ export default function Announcements() {
     }
   }
 
+  const publishedCount = items.filter((item) => item.published).length;
+  const draftCount = items.length - publishedCount;
+  const visible = items.filter((item) => {
+    if (filter === 'published') return item.published;
+    if (filter === 'drafts') return !item.published;
+    return true;
+  });
+
   return (
-    <section className="page">
+    <section className="page announcements-page">
       <header className="page-header">
         <div>
           <h2>Announcements</h2>
@@ -79,82 +97,103 @@ export default function Announcements() {
 
       <div className="stat-grid">
         <article className="stat-card">
-          <div className="stat-card-top">
-            <p>Total</p>
-            <span className="stat-icon">
-              <IconMegaphone />
-            </span>
-          </div>
+          <p>Total</p>
           <strong>{items.length}</strong>
         </article>
         <article className="stat-card">
           <p>Published</p>
-          <strong>{items.filter((item) => item.published).length}</strong>
+          <strong>{publishedCount}</strong>
         </article>
         <article className="stat-card">
           <p>Drafts</p>
-          <strong>{items.filter((item) => !item.published).length}</strong>
+          <strong>{draftCount}</strong>
         </article>
+      </div>
+
+      <div className="tabs">
+        {[
+          ['all', 'All'],
+          ['published', 'Published'],
+          ['drafts', 'Drafts'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`tab ${filter === value ? 'active' : ''}`}
+            onClick={() => setFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
       {loading && <p className="muted padded">Loading announcements…</p>}
-      {!loading && !error && items.length === 0 && (
+      {!loading && !error && visible.length === 0 && (
         <div className="empty-state">
           <h3>No announcements yet</h3>
           <p>Publish an update for the team.</p>
         </div>
       )}
 
-      <div className="stack">
-        {items.map((item) => (
-          <article className="panel" key={item.id}>
-            <div className="panel-header">
-              <div>
-                <h3>{item.title}</h3>
-                <p className="muted">{formatDateTime(item.createdAt)}</p>
+      <div className="news-feed">
+        {visible.map((item) => {
+          const stamp = dateParts(item.createdAt);
+          return (
+            <article className={`news-card${item.published ? ' is-live' : ' is-draft'}`} key={item.id}>
+              <div className="news-date">
+                <strong>{stamp.day}</strong>
+                <span>{stamp.month}</span>
               </div>
-              <span className={`status-badge ${item.published ? 'active' : 'inactive'}`}>
-                {item.published ? 'Published' : 'Draft'}
-              </span>
-            </div>
-            <p>{item.content}</p>
-            {can('announcements:write') && (
-              <div className="table-actions">
-                <button
-                  type="button"
-                  className="plain-link"
-                  onClick={async () => {
-                    try {
-                      const response = await announcementApi.getById(item.id);
-                      setEditing(response.payload || item);
-                    } catch (err) {
-                      showToast(err.message, 'error');
-                    }
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="link-bad"
-                  disabled={busy}
-                  onClick={() =>
-                    ask({
-                      title: 'Delete announcement',
-                      message: `Delete “${item.title}”? This cannot be undone.`,
-                      confirmLabel: 'Delete',
-                      danger: true,
-                      onConfirm: () => remove(item.id),
-                    })
-                  }
-                >
-                  Delete
-                </button>
+              <div className="news-body">
+                <div className="news-top">
+                  <h3>{item.title}</h3>
+                  <span className={`status-badge ${item.published ? 'active' : 'inactive'}`}>
+                    {item.published ? 'Published' : 'Draft'}
+                  </span>
+                </div>
+                <p>{item.content}</p>
+                <div className="news-foot">
+                  <em>{formatDateTime(item.createdAt)}</em>
+                  {can('announcements:write') && (
+                    <div className="table-actions">
+                      <button
+                        type="button"
+                        className="plain-link"
+                        onClick={async () => {
+                          try {
+                            const response = await announcementApi.getById(item.id);
+                            setEditing(response.payload || item);
+                          } catch (err) {
+                            showToast(err.message, 'error');
+                          }
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="link-bad"
+                        disabled={busy}
+                        onClick={() =>
+                          ask({
+                            title: 'Delete announcement',
+                            message: `Delete “${item.title}”? This cannot be undone.`,
+                            confirmLabel: 'Delete',
+                            danger: true,
+                            onConfirm: () => remove(item.id),
+                          })
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
       {editing && (

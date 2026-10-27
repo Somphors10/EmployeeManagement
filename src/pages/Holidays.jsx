@@ -19,7 +19,13 @@ export default function Holidays() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
   const paidCount = items.filter((item) => item.paid).length;
+  const visible = items.filter((item) => {
+    if (filter === 'paid') return item.paid;
+    if (filter === 'unpaid') return !item.paid;
+    return true;
+  });
 
   async function load() {
     setLoading(true);
@@ -113,13 +119,34 @@ export default function Holidays() {
         </article>
       </div>
 
+      <div className="tabs">
+        {[
+          ['all', 'All'],
+          ['paid', 'Paid'],
+          ['unpaid', 'Unpaid'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`tab ${filter === value ? 'active' : ''}`}
+            onClick={() => setFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="table-card">
         {loading ? (
           <p className="muted padded">Loading holidays…</p>
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="empty-state">
-            <h3>No holidays yet</h3>
-            <p>Add a public holiday so leave and attendance can use it.</p>
+            <h3>{items.length === 0 ? 'No holidays yet' : 'No holidays in this filter'}</h3>
+            <p>
+              {items.length === 0
+                ? 'Add a public holiday so leave and attendance can use it.'
+                : 'Try another tab or add a holiday.'}
+            </p>
           </div>
         ) : (
           <table className="data-table">
@@ -132,7 +159,7 @@ export default function Holidays() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {visible.map((item) => (
                 <tr key={item.id}>
                   <td data-label="Name">
                     <strong>{item.name}</strong>

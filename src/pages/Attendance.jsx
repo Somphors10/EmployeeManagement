@@ -28,6 +28,7 @@ export default function Attendance() {
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [from, setFrom] = useState(monthStartISO());
   const [to, setTo] = useState(todayISO());
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,7 @@ export default function Attendance() {
 
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
   const todayRecords = records.filter((row) => row.workDate === todayISO());
+  const visible = statusFilter ? records.filter((row) => row.status === statusFilter) : records;
   const canPickEmployee = can('employees:directory');
 
   async function load() {
@@ -190,6 +192,25 @@ export default function Attendance() {
         </article>
       </div>
 
+      <div className="tabs">
+        {[
+          ['', 'All'],
+          ['PRESENT', 'Present'],
+          ['LATE', 'Late'],
+          ['ABSENT', 'Absent'],
+          ['ON_LEAVE', 'On leave'],
+        ].map(([value, label]) => (
+          <button
+            key={label}
+            type="button"
+            className={`tab ${statusFilter === value ? 'active' : ''}`}
+            onClick={() => setStatusFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
@@ -230,10 +251,14 @@ export default function Attendance() {
 
         {loading ? (
           <p className="muted padded">Loading attendance…</p>
-        ) : records.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="empty-state">
-            <h3>No attendance records</h3>
-            <p>Change the filter or check someone in.</p>
+            <h3>{records.length === 0 ? 'No attendance records' : 'No records in this filter'}</h3>
+            <p>
+              {records.length === 0
+                ? 'Change the date range or check someone in.'
+                : 'Try another tab or change the date range.'}
+            </p>
           </div>
         ) : (
           <table className="data-table">
@@ -249,7 +274,7 @@ export default function Attendance() {
               </tr>
             </thead>
             <tbody>
-              {records.map((row) => {
+              {visible.map((row) => {
                 const person = peopleById[row.employeeId];
                 return (
                   <tr key={row.id}>

@@ -159,6 +159,23 @@ export default function Payroll() {
         </article>
       </div>
 
+      <div className="tabs">
+        {[
+          ['', 'All'],
+          ['PENDING', 'Pending'],
+          ['PAID', 'Paid'],
+        ].map(([value, label]) => (
+          <button
+            key={label}
+            type="button"
+            className={`tab ${status === value ? 'active' : ''}`}
+            onClick={() => setStatus(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {error && <div className="banner banner-error">{error}</div>}
 
       <div className="table-card">
@@ -170,11 +187,6 @@ export default function Payroll() {
                 {fullName(person)}
               </option>
             ))}
-          </Select>
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">All statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="PAID">Paid</option>
           </Select>
         </div>
 

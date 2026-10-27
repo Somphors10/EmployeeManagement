@@ -43,7 +43,6 @@ export const NAV = [
   { key: 'overtime', label: 'Overtime', path: '/overtime', permission: Permission.OVERTIME_VIEW },
   { key: 'holidays', label: 'Holidays', path: '/holidays', permission: Permission.HOLIDAYS_VIEW },
   { key: 'announcements', label: 'Announcements', path: '/announcements', permission: Permission.ANNOUNCEMENTS_VIEW },
-  { key: 'notifications', label: 'Notifications', path: '/notifications', permission: Permission.NOTIFICATIONS_VIEW },
   { key: 'reports', label: 'Reports', path: '/reports', permission: Permission.REPORTS_VIEW },
   { key: 'users', label: 'Users', path: '/users', permission: Permission.USERS_WRITE },
   { key: 'roles', label: 'Roles', path: '/roles', permission: Permission.ROLES_VIEW },

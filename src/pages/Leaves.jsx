@@ -123,11 +123,11 @@ export default function Leaves() {
 
       <div className="tabs">
         {[
+          ['', 'All'],
           ['PENDING', 'Pending'],
           ['APPROVED', 'Approved'],
           ['REJECTED', 'Rejected'],
           ['CANCELLED', 'Cancelled'],
-          ['', 'All'],
         ].map(([value, label]) => (
           <button
             key={label}

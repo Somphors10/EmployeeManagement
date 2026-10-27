@@ -33,6 +33,7 @@ export default function Users() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
   const peopleById = useMemo(() => peopleMap(employees), [employees]);
 
   async function load() {
@@ -94,6 +95,11 @@ export default function Users() {
   }
 
   const enabledCount = users.filter((item) => item.enabled !== false).length;
+  const visible = users.filter((item) => {
+    if (filter === 'enabled') return item.enabled !== false;
+    if (filter === 'disabled') return item.enabled === false;
+    return true;
+  });
 
   return (
     <section className="page">
@@ -122,13 +128,34 @@ export default function Users() {
         </article>
       </div>
 
+      <div className="tabs">
+        {[
+          ['all', 'All'],
+          ['enabled', 'Enabled'],
+          ['disabled', 'Disabled'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`tab ${filter === value ? 'active' : ''}`}
+            onClick={() => setFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="table-card">
         {loading ? (
           <p className="muted padded">Loading users…</p>
-        ) : users.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="empty-state">
-            <h3>No login accounts</h3>
-            <p>Create a user so someone can sign in.</p>
+            <h3>{users.length === 0 ? 'No login accounts' : 'No users in this filter'}</h3>
+            <p>
+              {users.length === 0
+                ? 'Create a user so someone can sign in.'
+                : 'Try another tab or create a user.'}
+            </p>
           </div>
         ) : (
           <table className="data-table">
@@ -142,7 +169,7 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {users.map((item) => {
+              {visible.map((item) => {
                 const person = peopleById[item.employeeId];
                 return (
                   <tr key={item.id}>

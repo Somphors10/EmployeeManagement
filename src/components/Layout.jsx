@@ -16,7 +16,6 @@ import {
   IconGrid,
   IconHoliday,
   IconLeave,
-  IconBell,
   IconMegaphone,
   IconMenu,
   IconOvertime,
@@ -39,7 +38,6 @@ const NAV_ICONS = {
   performance: IconStar,
   organization: IconBuilding,
   announcements: IconMegaphone,
-  notifications: IconBell,
   overtime: IconOvertime,
   holidays: IconHoliday,
   reports: IconChart,
@@ -52,7 +50,7 @@ const NAV_GROUPS = [
   { label: 'Overview', keys: ['dashboard'] },
   { label: 'People', keys: ['employees', 'organization', 'users'] },
   { label: 'Time', keys: ['leaves', 'attendance', 'overtime', 'holidays'] },
-  { label: 'Work', keys: ['payroll', 'documents', 'performance', 'announcements', 'notifications'] },
+  { label: 'Work', keys: ['payroll', 'documents', 'performance', 'announcements'] },
   { label: 'Admin', keys: ['reports', 'roles', 'settings'] },
 ];
 
@@ -107,8 +105,10 @@ export default function Layout() {
     };
   }, []);
 
-  const visibleNav = navItems.filter((item) =>
-    can(NAV_PERMISSION[item.key] || item.permission || `${item.key}:view`),
+  const visibleNav = navItems.filter(
+    (item) =>
+      item.key !== 'notifications' &&
+      can(NAV_PERMISSION[item.key] || item.permission || `${item.key}:view`),
   );
   const groupedNav = NAV_GROUPS.map((group) => ({
     ...group,

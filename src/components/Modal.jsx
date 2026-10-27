@@ -1,5 +1,13 @@
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
 export default function Modal({ title, children, onClose }) {
-  return (
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
         className="modal-card"
@@ -19,6 +27,7 @@ export default function Modal({ title, children, onClose }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
